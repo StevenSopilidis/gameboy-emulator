@@ -19,7 +19,7 @@ void Emu::run(int argc, char** argv)
         throw std::runtime_error("Usage: emu <rom_file>\n");
     }
 
-    if (cart_.load(argv[1]))
+    if (!cart_.load(argv[1]))
     {
         throw std::runtime_error(std::format("Failed to load cart: {}", argv[1]));
     }
