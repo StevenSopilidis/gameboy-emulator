@@ -24,6 +24,8 @@ void Emu::run(int argc, char** argv)
         throw std::runtime_error(std::format("Failed to load cart: {}", argv[1]));
     }
 
+    bus_.insert_cart(&cart_);
+
     std::cout << "Card loaded\n";
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -32,6 +34,7 @@ void Emu::run(int argc, char** argv)
     std::cout << "TTF was initialized\n";
 
     cpu_.init();
+    cpu_.set_bus(&bus_);
 
     context_.running = true;
     context_.paused  = false;

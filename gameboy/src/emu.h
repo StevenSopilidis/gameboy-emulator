@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bus.h"
 #include "cart.h"
 #include "cpu.h"
 
@@ -31,5 +32,6 @@ class Emu
     EmuContext context_;
     Cart       cart_;
     Cpu        cpu_;
+    Bus        bus_;
 };
 } // namespace game_boy

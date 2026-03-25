@@ -193,4 +193,15 @@ bool Cart::load(std::string_view cart)
     return true;
 }
 
+std::uint8_t Cart::read(std::uint16_t addr)
+{
+    // ROM type only supported for now
+    return context_->rom_data[addr];
+}
+
+void Cart::write(std::uint16_t addr, std::uint8_t val)
+{
+    throw std::runtime_error("Not yet implemented");
+}
+
 } // namespace game_boy

@@ -6,6 +6,8 @@ set(PROJECT_SOURCE_FILES
     src/cpu.cpp
     src/ppu.cpp
     src/cart.cpp
+    src/bus.cpp
+    src/instructions.cpp
 )
 
 # Find SDL2 via pkg-config

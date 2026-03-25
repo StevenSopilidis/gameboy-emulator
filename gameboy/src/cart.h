@@ -50,6 +50,9 @@ class Cart
     [[nodiscard]] std::string_view license_name() const noexcept;
     [[nodiscard]] std::string_view rom_type() const noexcept;
 
+    std::uint8_t read(std::uint16_t addr);
+    void         write(std::uint16_t addr, std::uint8_t val);
+
   private:
     std::unique_ptr<CartContext> context_;
 };
