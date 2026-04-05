@@ -1,17 +1,90 @@
 #include "cpu.h"
 
+#include "common.h"
 #include "instructions.h"
 
+#include <format>
 #include <iostream>
 
 namespace game_boy
 {
 std::uint16_t reverse(uint16_t n) { return ((n & 0xFF00) >> 8) | ((n & 0x00FF) << 8); }
 
+uint8_t Cpu::get_zero_flag() const { return BIT(context_.regs.f, 7); }
+
+uint8_t Cpu::get_carry_flag() const { return BIT(context_.regs.f, 4); }
+
+bool Cpu::check_cond(CpuContext* context)
+{
+    auto z = get_zero_flag();
+    auto c = get_carry_flag();
+
+    switch (context->curr_instr->cond)
+    {
+    case CT_NONE:
+        return true;
+    case CT_C:
+        return c;
+    case CT_NC:
+        return !c;
+    case CT_Z:
+        return z;
+    case CT_NZ:
+        return !z;
+    }
+
+    return false;
+}
+
+void Cpu::cpu_set_flags(char z, char n, char h, char c)
+{
+    if (z != -1)
+    {
+        BIT_SET(context_.regs.f, 7, z);
+    }
+
+    if (n != -1)
+    {
+        BIT_SET(context_.regs.f, 6, n);
+    }
+
+    if (h != -1)
+    {
+        BIT_SET(context_.regs.f, 5, h);
+    }
+
+    if (c != -1)
+    {
+        BIT_SET(context_.regs.f, 4, c);
+    }
+}
+
 void Cpu::init()
 {
     context_.regs.pc = 0x100;
     context_.regs.a  = 0x01;
+
+    instruction_processors_[IN_NOP] = []() {};
+
+    instruction_processors_[IN_NONE] = []() { throw std::runtime_error("Invalid instruction\n"); };
+
+    instruction_processors_[IN_LD] = []() {};
+    instruction_processors_[IN_JP] = [&]()
+    {
+        if (check_cond(&context_))
+        {
+            context_.regs.pc = context_.curr_fetch_data;
+            inc_cycles(1);
+        }
+    };
+
+    instruction_processors_[IN_DI] = [&]() { context_.int_master_enabled = false; };
+
+    instruction_processors_[IN_XOR] = [&]()
+    {
+        context_.regs.a ^= context_.curr_fetch_data & 0Xff;
+        cpu_set_flags((context_.regs.a == 0), 0, 0, 0);
+    };
 }
 
 void Cpu::set_bus(Bus* bus) { bus_ = bus; }
@@ -102,7 +175,17 @@ void Cpu::fetch_data()
     }
 }
 
-void Cpu::execute() { throw std::runtime_error("execute() not yet implemented"); }
+void Cpu::execute()
+{
+    auto it = instruction_processors_.find(context_.curr_instr->type);
+
+    if (it == instruction_processors_.end())
+    {
+        throw std::runtime_error("Instruction not yet implemented");
+    }
+
+    it->second();
+}
 
 bool Cpu::step()
 {
@@ -111,10 +194,16 @@ bool Cpu::step()
         auto pc = context_.regs.pc;
         fetch_instruction();
         fetch_data();
-        printf("Executing instruction: %02X  PC: %04x \n", context_.curr_opcode, pc);
+
+        std::cout << std::format(
+            "{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} B: {:02X} C: {:02X}\n", pc,
+            get_instruction_name(context_.curr_instr->type), context_.curr_opcode,
+            bus_->read(pc + 1), bus_->read(pc + 2), context_.regs.a, context_.regs.b,
+            context_.regs.c);
+
         execute();
     }
 
-    return false;
+    return true;
 }
 } // namespace game_boy

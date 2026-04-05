@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace game_boy
 {
@@ -124,5 +125,7 @@ struct Instruction
 };
 
 std::optional<Instruction> instruction_by_opcode(std::uint8_t opcode);
+
+std::string_view get_instruction_name(InstructionType instr);
 
 } // namespace game_boy
