@@ -143,6 +143,57 @@ std::uint16_t Cpu::read_register(RegisterType reg)
     }
 }
 
+void Cpu::set_register(RegisterType reg, std::uint16_t val)
+{
+    switch (reg)
+    {
+    case RT_A:
+        context_.regs.a = val & 0xFF;
+        break;
+    case RT_F:
+        context_.regs.f = val & 0xFF;
+        break;
+    case RT_B:
+        context_.regs.b = val & 0xFF;
+        break;
+    case RT_C:
+        context_.regs.c = val & 0xFF;
+        break;
+    case RT_D:
+        context_.regs.d = val & 0xFF;
+        break;
+    case RT_E:
+        context_.regs.e = val & 0xFF;
+        break;
+    case RT_H:
+        context_.regs.h = val & 0xFF;
+        break;
+    case RT_L:
+        context_.regs.l = val & 0xFF;
+        break;
+    case RT_AF:
+        *((std::uint16_t*)&context_.regs.a) = reverse(val);
+        break;
+    case RT_BC:
+        *((std::uint16_t*)&context_.regs.b) = reverse(val);
+        break;
+    case RT_DE:
+        *((std::uint16_t*)&context_.regs.d) = reverse(val);
+        break;
+    case RT_HL:
+        *((std::uint16_t*)&context_.regs.h) = reverse(val);
+        break;
+    case RT_PC:
+        context_.regs.pc = val;
+        break;
+    case RT_SP:
+        context_.regs.sp = val;
+        break;
+    case RT_NONE:
+        break;
+    }
+}
+
 void Cpu::fetch_data()
 {
     context_.mem_dest    = 0;
@@ -155,11 +206,15 @@ void Cpu::fetch_data()
     case AM_R:
         context_.curr_fetch_data = read_register(context_.curr_instr->reg1);
         return;
+    case AM_R_R:
+        context_.curr_fetch_data = read_register(context_.curr_instr->reg2);
+        return;
     case AM_R_D8:
         context_.curr_fetch_data = bus_->read(context_.regs.pc);
         inc_cycles(1);
         context_.regs.pc++;
         return;
+    case AM_R_D16:
     case AM_D16:
     {
         std::uint16_t lo = bus_->read(context_.regs.pc);
@@ -170,6 +225,122 @@ void Cpu::fetch_data()
         context_.regs.pc += 2;
         return;
     }
+    case AM_MR_R:
+        context_.curr_fetch_data = read_register(context_.curr_instr->reg2);
+        context_.mem_dest        = read_register(context_.curr_instr->reg1);
+        context_.dest_is_mem     = true;
+
+        if (context_.curr_instr->reg1 == RT_C)
+        {
+            context_.mem_dest |= 0xFF00;
+        }
+        return;
+    case AM_R_MR:
+    {
+        auto addr = read_register(context_.curr_instr->reg2);
+        if (context_.curr_instr->reg2 == RT_C)
+        {
+            addr |= 0xFF00;
+        }
+        context_.curr_fetch_data = bus_->read(addr);
+        inc_cycles(1);
+        return;
+    }
+    case AM_R_HLI:
+    {
+        context_.curr_fetch_data = bus_->read(read_register(context_.curr_instr->reg2));
+        inc_cycles(1);
+        set_register(RT_HL, read_register(RT_HL) + 1);
+        return;
+    }
+    case AM_R_HLD:
+    {
+        context_.curr_fetch_data = bus_->read(read_register(context_.curr_instr->reg2));
+        inc_cycles(1);
+        set_register(RT_HL, read_register(RT_HL) - 1);
+        return;
+    }
+    case AM_HLI_R:
+    {
+        context_.curr_fetch_data = read_register(context_.curr_instr->reg2);
+        context_.mem_dest        = read_register(context_.curr_instr->reg1);
+        context_.dest_is_mem     = true;
+        set_register(RT_HL, read_register(RT_HL) + 1);
+        return;
+    }
+    case AM_HLD_R:
+    {
+        context_.curr_fetch_data = read_register(context_.curr_instr->reg2);
+        context_.mem_dest        = read_register(context_.curr_instr->reg1);
+        context_.dest_is_mem     = true;
+        set_register(RT_HL, read_register(RT_HL) - 1);
+        return;
+    }
+    case AM_R_A8:
+        context_.curr_fetch_data = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+        context_.regs.pc++;
+        return;
+    case AM_R_A16:
+    {
+        auto lo = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+
+        auto hi = bus_->read(context_.regs.pc + 1);
+        inc_cycles(1);
+
+        auto addr = lo | (hi << 8);
+
+        context_.regs.pc += 2;
+        context_.curr_fetch_data = bus_->read(addr);
+        inc_cycles(1);
+        return;
+    }
+    case AM_A8_R:
+        context_.mem_dest    = bus_->read(context_.regs.pc) | 0xFF00;
+        context_.dest_is_mem = true;
+        inc_cycles(1);
+        context_.regs.pc++;
+        return;
+    case AM_HL_SPR:
+        context_.curr_fetch_data = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+        context_.regs.pc++;
+        return;
+    case AM_D8:
+        context_.curr_fetch_data = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+        context_.regs.pc++;
+        return;
+    case AM_A16_R:
+    case AM_D16_R:
+    {
+        std::uint16_t lo = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+        std::uint16_t hi = bus_->read(context_.regs.pc + 1);
+        inc_cycles(1);
+
+        context_.mem_dest    = static_cast<std::uint16_t>(lo | (hi << 8));
+        context_.dest_is_mem = true;
+
+        context_.regs.pc += 2;
+        context_.curr_fetch_data = read_register(context_.curr_instr->reg2);
+        return;
+    }
+    case AM_MR:
+        context_.mem_dest        = read_register(context_.curr_instr->reg1);
+        context_.dest_is_mem     = true;
+        context_.curr_fetch_data = bus_->read(read_register(context_.curr_instr->reg1));
+        inc_cycles(1);
+        return;
+    case AM_MR_D8:
+        context_.curr_fetch_data = bus_->read(context_.regs.pc);
+        inc_cycles(1);
+        context_.regs.pc++;
+
+        context_.mem_dest    = read_register(context_.curr_instr->reg1);
+        context_.dest_is_mem = true;
+        return;
     default:
         throw std::runtime_error(&"Unknown addressing mode: "[context_.curr_instr->mode]);
     }

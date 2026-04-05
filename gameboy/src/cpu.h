@@ -58,6 +58,7 @@ class Cpu
     void          cpu_set_flags(char z, char n, char h, char c);
     void          execute();
     std::uint16_t read_register(RegisterType reg);
+    void          set_register(RegisterType reg, std::uint16_t val);
 
     bool check_cond(CpuContext* context);
 
