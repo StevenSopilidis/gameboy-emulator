@@ -68,7 +68,45 @@ void Cpu::init()
 
     instruction_processors_[IN_NONE] = []() { throw std::runtime_error("Invalid instruction\n"); };
 
-    instruction_processors_[IN_LD] = []() {};
+    instruction_processors_[IN_LD] = [&]()
+    {
+        if (context_.dest_is_mem)
+        {
+            if (context_.curr_instr->reg2 >= RT_AF)
+            {
+                // 16 bit register
+                inc_cycles(1);
+                bus_->write16(context_.mem_dest, context_.curr_fetch_data);
+            }
+            else
+            {
+                bus_->write(context_.mem_dest, context_.curr_fetch_data);
+            }
+
+            inc_cycles(1);
+            return;
+        }
+
+        if (context_.curr_instr->mode == AM_HL_SPR)
+        {
+            std::uint8_t hflag = (read_register(context_.curr_instr->reg2) & 0xF) +
+                                     (context_.curr_fetch_data & 0xF) >=
+                                 0x10;
+
+            std::uint8_t cflag = (read_register(context_.curr_instr->reg2) & 0xFF) +
+                                     (context_.curr_fetch_data & 0xFF) >=
+                                 0x100;
+
+            cpu_set_flags(0, 0, hflag, cflag);
+            set_register(context_.curr_instr->reg1,
+                         read_register(context_.curr_instr->reg2) + (char)context_.curr_fetch_data);
+
+            return;
+        }
+
+        set_register(context_.curr_instr->reg1, context_.curr_fetch_data);
+    };
+
     instruction_processors_[IN_JP] = [&]()
     {
         if (check_cond(&context_))

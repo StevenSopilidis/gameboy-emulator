@@ -31,6 +31,14 @@ std::uint8_t Bus::read(std::uint16_t addr)
     throw std::runtime_error("NOT IMPLEMENTED");
 }
 
+std::uint16_t Bus::read16(std::uint16_t addr)
+{
+    auto lo = read(addr);
+    auto hi = read(addr + 1);
+
+    return (hi << 8) | lo;
+}
+
 void Bus::write(std::uint16_t addr, std::uint8_t val)
 {
     if (addr < 0x8000)
@@ -41,4 +49,11 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
 
     throw std::runtime_error("NOT IMPLEMENTED");
 }
+
+void Bus::write16(std::uint16_t addr, std::uint16_t val)
+{
+    write(addr + 1, (val >> 8) & 0xFF);
+    write(addr, val & 0xFF);
+}
+
 } // namespace game_boy
