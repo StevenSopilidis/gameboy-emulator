@@ -140,10 +140,12 @@ auto get_instruction = [](std::size_t index)
         arr[0xC3] = {.type = IN_JP, .mode = AM_D16};
 
         // 0xEX
+        arr[0xE0] = {.type = IN_LDH, .mode = AM_A8_R, .reg1 = RT_NONE, .reg2 = RT_A};
         arr[0xE2] = {.type = IN_LD, .mode = AM_MR_R, .reg1 = RT_C, .reg2 = RT_A};
         arr[0xEA] = {.type = IN_LD, .mode = AM_A16_R, .reg2 = RT_A};
 
         // 0xFX
+        arr[0xF0] = {.type = IN_LDH, .mode = AM_R_A8, .reg1 = RT_A };
         arr[0xF2] = {.type = IN_LD, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_C};
         arr[0xF3] = {.type = IN_DI, .mode = AM_IMP};
         arr[0xFA] = {.type = IN_LD, .mode = AM_R_A16, .reg1 = RT_A};

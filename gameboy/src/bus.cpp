@@ -1,5 +1,8 @@
 #include "bus.h"
 
+#include "cpu.h"
+
+#include <iostream>
 #include <stdexcept>
 
 // memory MAP
@@ -15,20 +18,72 @@
 // 0xFE00 - 0xFE9F : Object Attribute Memory
 // 0xFEA0 - 0xFEFF : Reserved - Unusable
 // 0xFF00 - 0xFF7F : I/O Registers
-// 0xFF80 - 0xFFFE : Zero Page
+// 0xFF80 - 0xFFFE : Zero Page (High ram)
 
 namespace game_boy
 {
 void Bus::insert_cart(Cart* cart) { cart_ = cart; }
 
+void Bus::insert_ram(Ram* ram) { ram_ = ram; }
+
+void Bus::insert_cpu(Cpu* cpu) { cpu_ = cpu; }
+
 std::uint8_t Bus::read(std::uint16_t addr)
 {
     if (addr < 0x8000)
     {
+        // ROM data
         return cart_->read(addr);
     }
 
-    throw std::runtime_error("NOT IMPLEMENTED");
+    if (addr < 0xA000)
+    {
+        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+    }
+
+    if (addr < 0xC000)
+    {
+        // Cartridge ram
+        cart_->read(addr);
+    }
+
+    if (addr < 0xE000)
+    {
+        // WRAM (Working RAM)
+        return ram_->wram_read(addr);
+    }
+
+    if (addr < 0xFE00)
+    {
+        // reserved echo ram
+        return 0;
+    }
+
+    if (addr < 0xFEA0)
+    {
+        // OAM
+        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+    }
+
+    if (addr < 0xFF00)
+    {
+        // reserved unusable
+        return 0;
+    }
+
+    if (addr < 0xFF80)
+    {
+        // IO Registers
+        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+    }
+
+    if (addr == 0XFFFF)
+    {
+        // Cpu enable register
+        return cpu_->get_ie_register();
+    }
+
+    return ram_->hram_read(addr);
 }
 
 std::uint16_t Bus::read16(std::uint16_t addr)
@@ -47,7 +102,59 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
         return;
     }
 
-    throw std::runtime_error("NOT IMPLEMENTED");
+    if (addr < 0xA000)
+    {
+        throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
+    }
+
+    if (addr < 0xC000)
+    {
+        // Cartridge ram
+        cart_->write(addr, val);
+        return;
+    }
+
+    if (addr < 0xE000)
+    {
+        // WRAM (Working RAM)
+        ram_->wram_write(addr, val);
+        return;
+    }
+
+    if (addr < 0xFE00)
+    {
+        // reserved echo ram
+        return;
+    }
+
+    if (addr < 0xFEA0)
+    {
+        // OAM
+        throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
+    }
+
+    if (addr < 0xFF00)
+    {
+        // reserved unusable
+        return;
+    }
+
+    if (addr < 0xFF80)
+    {
+        // IO Registers
+        // throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
+        std::cout << "BUS WRITE NOT IMPLEMENTED\n";
+        return;
+    }
+
+    if (addr == 0XFFFF)
+    {
+        // Cpu enable register
+        cpu_->set_ie_register(val);
+        return;
+    }
+
+    ram_->hram_write(addr, val);
 }
 
 void Bus::write16(std::uint16_t addr, std::uint16_t val)

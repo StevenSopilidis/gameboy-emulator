@@ -25,6 +25,7 @@ void Emu::run(int argc, char** argv)
     }
 
     bus_.insert_cart(&cart_);
+    bus_.insert_ram(&ram_);
 
     std::cout << "Card loaded\n";
 
@@ -35,6 +36,7 @@ void Emu::run(int argc, char** argv)
 
     cpu_.init();
     cpu_.set_bus(&bus_);
+    bus_.insert_cpu(&cpu_);
 
     context_.running = true;
     context_.paused  = false;

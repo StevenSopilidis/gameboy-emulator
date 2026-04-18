@@ -3,6 +3,7 @@
 #include "bus.h"
 #include "cart.h"
 #include "cpu.h"
+#include "ram.h"
 
 #include <cstdint>
 
@@ -31,6 +32,7 @@ class Emu
   private:
     EmuContext context_;
     Cart       cart_;
+    Ram        ram_;
     Cpu        cpu_;
     Bus        bus_;
 };

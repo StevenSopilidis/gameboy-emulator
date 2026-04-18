@@ -123,6 +123,20 @@ void Cpu::init()
         context_.regs.a ^= context_.curr_fetch_data & 0Xff;
         cpu_set_flags((context_.regs.a == 0), 0, 0, 0);
     };
+
+    instruction_processors_[IN_LDH] = [&]()
+    {
+        if (context_.curr_instr->reg1 == RT_A)
+        {
+            set_register(context_.curr_instr->reg1, bus_->read(0xFF00 | context_.curr_fetch_data));
+        }
+        else
+        {
+            bus_->write(0xFF00 | context_.curr_fetch_data, context_.regs.a);
+        }
+
+        inc_cycles(1);
+    };
 }
 
 void Cpu::set_bus(Bus* bus) { bus_ = bus; }
@@ -404,15 +418,21 @@ bool Cpu::step()
         fetch_instruction();
         fetch_data();
 
-        std::cout << std::format(
-            "{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} B: {:02X} C: {:02X}\n", pc,
-            get_instruction_name(context_.curr_instr->type), context_.curr_opcode,
-            bus_->read(pc + 1), bus_->read(pc + 2), context_.regs.a, context_.regs.b,
-            context_.regs.c);
+        std::cout << std::format("{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} BC: {:02X}{:02X} "
+                                 "DE: {:02X}{:02X} HL: {:02X}{:02X}\n",
+                                 pc, get_instruction_name(context_.curr_instr->type),
+                                 context_.curr_opcode, bus_->read(pc + 1), bus_->read(pc + 2),
+                                 context_.regs.a, context_.regs.b, context_.regs.c, context_.regs.d,
+                                 context_.regs.e, context_.regs.h, context_.regs.l);
 
         execute();
     }
 
     return true;
 }
+
+std::uint8_t Cpu::get_ie_register() const noexcept { return context_.ie_register; }
+
+void Cpu::set_ie_register(std::uint8_t val) noexcept { context_.ie_register = val; }
+
 } // namespace game_boy

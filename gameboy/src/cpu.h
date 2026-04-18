@@ -36,7 +36,8 @@ struct CpuContext
     bool halted;
     bool stepping;
 
-    bool int_master_enabled;
+    bool         int_master_enabled;
+    std::uint8_t ie_register;
 };
 
 class Cpu
@@ -49,6 +50,9 @@ class Cpu
 
     void              inc_cycles(int cpu_cycles) noexcept;
     [[nodiscard]] int get_cycles() const noexcept;
+
+    [[nodiscard]] std::uint8_t get_ie_register() const noexcept;
+    void                       set_ie_register(std::uint8_t val) noexcept;
 
   private:
     using IN_PROC = std::function<void()>;
