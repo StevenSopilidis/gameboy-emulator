@@ -137,6 +137,28 @@ void Cpu::init()
 
         inc_cycles(1);
     };
+
+    instruction_processors_[IN_PUSH] = [&]()
+    {
+        auto hi = (read_register(context_.curr_instr->reg1) >> 8) & 0xFF;
+        stack_push(hi);
+
+        auto lo = read_register(context_.curr_instr->reg1) & 0xFF;
+        stack_push(lo);
+
+        inc_cycles(1);
+    };
+
+    instruction_processors_[IN_POP] = [&]()
+    {
+        auto data = stack_pop16();
+        set_register(context_.curr_instr->reg1, data);
+
+        if (context_.curr_instr->reg1 == RT_AF)
+        {
+            set_register(context_.curr_instr->reg1, data & 0xFFF0);
+        }
+    };
 }
 
 void Cpu::set_bus(Bus* bus) { bus_ = bus; }
@@ -434,5 +456,35 @@ bool Cpu::step()
 std::uint8_t Cpu::get_ie_register() const noexcept { return context_.ie_register; }
 
 void Cpu::set_ie_register(std::uint8_t val) noexcept { context_.ie_register = val; }
+
+const Registers* Cpu::get_regs() const { return &context_.regs; }
+
+void Cpu::stack_push(std::uint8_t data)
+{
+    context_.regs.sp--;
+    bus_->write(context_.regs.sp, data);
+    inc_cycles(1);
+}
+
+void Cpu::stack_push16(std::uint16_t data)
+{
+    stack_push((data >> 8) & 0xFF);
+    stack_push(data & 0xFF);
+}
+
+std::uint8_t Cpu::stack_pop()
+{
+    auto data = bus_->read(context_.regs.sp++);
+    inc_cycles(1);
+    return data;
+}
+
+std::uint16_t Cpu::stack_pop16()
+{
+    auto lo = stack_pop();
+    auto hi = stack_pop();
+
+    return (hi << 8) | lo;
+}
 
 } // namespace game_boy

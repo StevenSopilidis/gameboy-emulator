@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <memory>
 
 namespace game_boy
 {
@@ -53,6 +52,14 @@ class Cpu
 
     [[nodiscard]] std::uint8_t get_ie_register() const noexcept;
     void                       set_ie_register(std::uint8_t val) noexcept;
+
+    [[nodiscard]] const Registers* get_regs() const;
+
+    // stack operations
+    void          stack_push(std::uint8_t data);
+    void          stack_push16(std::uint16_t data);
+    std::uint8_t  stack_pop();
+    std::uint16_t stack_pop16();
 
   private:
     using IN_PROC = std::function<void()>;
