@@ -71,10 +71,12 @@ class Cpu
     std::uint16_t read_register(RegisterType reg);
     void          set_register(RegisterType reg, std::uint16_t val);
 
-    bool check_cond(CpuContext* context);
+    bool check_cond();
 
     uint8_t get_zero_flag() const;
     uint8_t get_carry_flag() const;
+
+    void goto_addr(std::uint16_t addr, bool pushpc);
 
     int        cycles_{0};
     CpuContext context_;

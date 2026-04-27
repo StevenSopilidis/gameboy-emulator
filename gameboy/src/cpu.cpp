@@ -14,12 +14,12 @@ uint8_t Cpu::get_zero_flag() const { return BIT(context_.regs.f, 7); }
 
 uint8_t Cpu::get_carry_flag() const { return BIT(context_.regs.f, 4); }
 
-bool Cpu::check_cond(CpuContext* context)
+bool Cpu::check_cond()
 {
     auto z = get_zero_flag();
     auto c = get_carry_flag();
 
-    switch (context->curr_instr->cond)
+    switch (context_.curr_instr->cond)
     {
     case CT_NONE:
         return true;
@@ -107,13 +107,39 @@ void Cpu::init()
         set_register(context_.curr_instr->reg1, context_.curr_fetch_data);
     };
 
-    instruction_processors_[IN_JP] = [&]()
+    instruction_processors_[IN_JP] = [&]() { goto_addr(context_.curr_fetch_data, false); };
+
+    instruction_processors_[IN_CALL] = [&]() { goto_addr(context_.curr_fetch_data, true); };
+
+    instruction_processors_[IN_RST] = [&]() { goto_addr(context_.curr_instr->param, true); };
+
+    instruction_processors_[IN_RET] = [&]()
     {
-        if (check_cond(&context_))
+        if (context_.curr_instr->cond != CT_NONE)
         {
-            context_.regs.pc = context_.curr_fetch_data;
             inc_cycles(1);
         }
+
+        if (check_cond())
+        {
+            std::uint16_t addr = stack_pop16();
+            context_.regs.pc   = addr;
+
+            inc_cycles(1);
+        }
+    };
+
+    instruction_processors_[IN_RETI] = [&]()
+    {
+        context_.int_master_enabled = true;
+        instruction_processors_[IN_RET]();
+    };
+
+    instruction_processors_[IN_JR] = [&]()
+    {
+        auto          rel  = (char)(context_.curr_fetch_data & 0xFF);
+        std::uint16_t addr = context_.regs.pc + rel;
+        goto_addr(addr, false);
     };
 
     instruction_processors_[IN_DI] = [&]() { context_.int_master_enabled = false; };
@@ -485,6 +511,20 @@ std::uint16_t Cpu::stack_pop16()
     auto hi = stack_pop();
 
     return (hi << 8) | lo;
+}
+
+void Cpu::goto_addr(std::uint16_t addr, bool pushpc)
+{
+    if (check_cond())
+    {
+        if (pushpc)
+        {
+            stack_push16(context_.regs.pc);
+        }
+
+        context_.regs.pc = addr;
+        inc_cycles(1);
+    }
 }
 
 } // namespace game_boy

@@ -38,22 +38,27 @@ auto get_instruction = [](std::size_t index)
         arr[0x12] = {.type = IN_LD, .mode = AM_MR_R, .reg1 = RT_DE, .reg2 = RT_A};
         arr[0x15] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_D};
         arr[0x16] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_D};
+        arr[0x18] = {.type = IN_JR, .mode = AM_D8};
         arr[0x1A] = {.type = IN_LD, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_DE};
         arr[0x1E] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_E};
 
         // 0x2X
+        arr[0x20] = {.type = IN_JR, .mode = AM_D8, .cond = CT_NZ};
         arr[0x21] = {.type = IN_LD, .mode = AM_R_D16, .reg1 = RT_HL};
         arr[0x22] = {.type = IN_LD, .mode = AM_HLI_R, .reg1 = RT_HL, .reg2 = RT_A};
         arr[0x25] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_H};
         arr[0x26] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_H};
+        arr[0x28] = {.type = IN_JR, .mode = AM_D8, .cond = CT_Z};
         arr[0x2A] = {.type = IN_LD, .mode = AM_R_HLI, .reg1 = RT_A, .reg2 = RT_HL};
         arr[0x2E] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_L};
 
         // 0x3X
+        arr[0x30] = {.type = IN_JR, .mode = AM_D8, .cond = CT_NC};
         arr[0x31] = {.type = IN_LD, .mode = AM_R_D16, .reg1 = RT_SP};
         arr[0x32] = {.type = IN_LD, .mode = AM_HLD_R, .reg1 = RT_HL, .reg2 = RT_A};
         arr[0x35] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_HL};
         arr[0x36] = {.type = IN_LD, .mode = AM_MR_D8, .reg1 = RT_HL};
+        arr[0x38] = {.type = IN_JR, .mode = AM_D8, .cond = CT_C};
         arr[0x3A] = {.type = IN_LD, .mode = AM_R_HLD, .reg1 = RT_A, .reg2 = RT_HL};
         arr[0x3E] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_A};
 
@@ -137,18 +142,52 @@ auto get_instruction = [](std::size_t index)
 
         arr[0xAF] = {.type = IN_XOR, .mode = AM_R, .reg1 = RT_A};
 
+        arr[0xC0] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_NZ};
+        arr[0xC1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_BC};
+        arr[0xC2] = {.type = IN_JP, .mode = AM_D16, .cond = CT_NZ};
         arr[0xC3] = {.type = IN_JP, .mode = AM_D16};
+        arr[0xC4] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_NZ};
+        arr[0xC5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_BC};
+        arr[0xC7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x00};
+        arr[0xC8] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_Z};
+        arr[0xC9] = {.type = IN_RET};
+        arr[0xCA] = {.type = IN_JP, .mode = AM_D16, .cond = CT_Z};
+        arr[0xCC] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_Z};
+        arr[0xCD] = {.type = IN_CALL, .mode = AM_D16};
+        arr[0xCF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x08};
+
+        // 0xDX
+        arr[0xD0] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_NC};
+        arr[0xD1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_DE};
+        arr[0xD2] = {.type = IN_JP, .mode = AM_D16, .cond = CT_NC};
+        arr[0xD4] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_NC};
+        arr[0xD5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_DE};
+        arr[0xD7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x10};
+        arr[0xD8] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_C};
+        arr[0xD9] = {.type = IN_RETI};
+        arr[0xDA] = {.type = IN_JP, .mode = AM_D16, .cond = CT_C};
+        arr[0xDC] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_C};
+        arr[0xDF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x18};
 
         // 0xEX
         arr[0xE0] = {.type = IN_LDH, .mode = AM_A8_R, .reg1 = RT_NONE, .reg2 = RT_A};
+        arr[0xE1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_HL};
         arr[0xE2] = {.type = IN_LD, .mode = AM_MR_R, .reg1 = RT_C, .reg2 = RT_A};
+        arr[0xE5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_HL};
+        arr[0xE7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x20};
+        arr[0xE9] = {.type = IN_JP, .mode = AM_MR, .reg1 = RT_HL};
         arr[0xEA] = {.type = IN_LD, .mode = AM_A16_R, .reg2 = RT_A};
+        arr[0xEF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x28};
 
         // 0xFX
-        arr[0xF0] = {.type = IN_LDH, .mode = AM_R_A8, .reg1 = RT_A };
+        arr[0xF0] = {.type = IN_LDH, .mode = AM_R_A8, .reg1 = RT_A};
+        arr[0xF1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_AF};
         arr[0xF2] = {.type = IN_LD, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_C};
         arr[0xF3] = {.type = IN_DI, .mode = AM_IMP};
+        arr[0xF5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_AF};
+        arr[0xF7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x30};
         arr[0xFA] = {.type = IN_LD, .mode = AM_R_A16, .reg1 = RT_A};
+        arr[0xFF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x38};
 
         return arr;
     }();

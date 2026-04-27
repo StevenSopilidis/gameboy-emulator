@@ -9,7 +9,6 @@ set(PROJECT_SOURCE_FILES
     src/bus.cpp
     src/instructions.cpp
     src/ram.cpp
-    src/stack.cpp
 )
 
 # Find SDL2 via pkg-config
