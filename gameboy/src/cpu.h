@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bus.h"
+#include "common.h"
 #include "instructions.h"
 
 #include <cstdint>
@@ -8,6 +9,7 @@
 
 namespace game_boy
 {
+
 struct Registers
 {
     std::uint8_t  a;
@@ -70,6 +72,12 @@ class Cpu
     void          execute();
     std::uint16_t read_register(RegisterType reg);
     void          set_register(RegisterType reg, std::uint16_t val);
+    static bool   is_16_bit(RegisterType rt);
+
+    auto flag_z() const { return BIT(context_.regs.f, 7); }
+    auto flag_n() const { return BIT(context_.regs.f, 6); }
+    auto flag_h() const { return BIT(context_.regs.f, 5); }
+    auto flag_c() const { return BIT(context_.regs.f, 4); }
 
     bool check_cond();
 

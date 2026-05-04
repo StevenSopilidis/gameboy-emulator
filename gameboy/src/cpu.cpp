@@ -72,7 +72,7 @@ void Cpu::init()
     {
         if (context_.dest_is_mem)
         {
-            if (context_.curr_instr->reg2 >= RT_AF)
+            if (Cpu::is_16_bit(context_.curr_instr->reg2))
             {
                 // 16 bit register
                 inc_cycles(1);
@@ -185,7 +185,158 @@ void Cpu::init()
             set_register(context_.curr_instr->reg1, data & 0xFFF0);
         }
     };
+
+    instruction_processors_[IN_INC] = [&]()
+    {
+        auto val = read_register(context_.curr_instr->reg1) + 1;
+
+        if (Cpu::is_16_bit(context_.curr_instr->reg1))
+        {
+            inc_cycles(1);
+        }
+
+        if (context_.curr_instr->reg1 == RT_HL && context_.curr_instr->mode == AM_MR)
+        {
+            val = bus_->read(read_register(RT_HL)) + 1;
+            val &= 0xFF;
+            bus_->write(read_register(RT_HL), val);
+        }
+        else
+        {
+            set_register(context_.curr_instr->reg1, val);
+            val = read_register(context_.curr_instr->reg1);
+        }
+
+        if ((context_.curr_opcode & 0x03) == 0x03)
+        {
+            return;
+        }
+
+        cpu_set_flags(val == 0, 0, (val & 0x0F) == 0, -1);
+    };
+
+    instruction_processors_[IN_DEC] = [&]()
+    {
+        std::uint16_t val = read_register(context_.curr_instr->reg1) - 1;
+
+        if (Cpu::is_16_bit(context_.curr_instr->reg1))
+        {
+            inc_cycles(1);
+        }
+
+        if (context_.curr_instr->reg1 == RT_HL && context_.curr_instr->mode == AM_MR)
+        {
+            val = bus_->read(read_register(RT_HL)) - 1;
+            bus_->write(read_register(RT_HL), val);
+        }
+        else
+        {
+            set_register(context_.curr_instr->reg1, val);
+            val = read_register(context_.curr_instr->reg1);
+        }
+
+        if ((context_.curr_opcode & 0x0B) == 0x0B)
+        {
+            return;
+        }
+
+        cpu_set_flags(val == 0, 1, (val & 0x0F) == 0x0f, -1);
+    };
+
+    instruction_processors_[IN_ADD] = [&]()
+    {
+        std::uint32_t val = read_register(context_.curr_instr->reg1) + context_.curr_fetch_data;
+
+        auto is_16bit = is_16_bit(context_.curr_instr->reg1);
+        if (is_16bit)
+        {
+            inc_cycles(1);
+        }
+
+        if (context_.curr_instr->reg1 == RT_SP)
+        {
+            val = read_register(context_.curr_instr->reg1) + (char)context_.curr_fetch_data;
+        }
+
+        int z = (val & 0xFF) == 0;
+        int h =
+            (read_register(context_.curr_instr->reg1) & 0xF) + (context_.curr_fetch_data & 0xF) >=
+            0x10;
+        int c = (int)(read_register(context_.curr_instr->reg1) & 0xFF) +
+                    (int)(context_.curr_fetch_data & 0xFF) >=
+                0x100;
+
+        if (is_16bit)
+        {
+            z = -1;
+            h = (read_register(context_.curr_instr->reg1) & 0xFFF) +
+                    (context_.curr_fetch_data & 0xFFF) >=
+                0x1000;
+            auto n = ((std::uint32_t)read_register(context_.curr_instr->reg1)) +
+                     ((std::uint32_t)context_.curr_fetch_data);
+            c = n >= 0x10000;
+        }
+
+        if (context_.curr_instr->reg1 == RT_SP)
+        {
+            z = 0;
+            h = (read_register(context_.curr_instr->reg1) & 0xF) +
+                    (context_.curr_fetch_data & 0xF) >=
+                0x10;
+            c = (int)(read_register(context_.curr_instr->reg1) & 0xFF) +
+                    (int)(context_.curr_fetch_data & 0xFF) >=
+                0x100;
+        }
+
+        set_register(context_.curr_instr->reg1, val & 0xFFFF);
+        cpu_set_flags(z, 0, h, c);
+    };
+
+    instruction_processors_[IN_ADC] = [&]()
+    {
+        auto u = context_.curr_fetch_data;
+        auto a = context_.regs.a;
+        auto c = flag_c();
+
+        context_.regs.a = (a + u + c) & 0xFF;
+        cpu_set_flags(context_.regs.a == 0, 0, (a & 0xF) + (u & 0xF) + c > 0xF, a + u + c > 0xFF);
+    };
+
+    instruction_processors_[IN_SUB] = [&]()
+    {
+        auto val = read_register(context_.curr_instr->reg1) - context_.curr_fetch_data;
+
+        int z = val == 0;
+        int h = ((int)read_register(context_.curr_instr->reg1) & 0xF) -
+                    ((int)context_.curr_fetch_data & 0xF) <
+                0;
+
+        int c =
+            ((int)read_register(context_.curr_instr->reg1)) - ((int)context_.curr_fetch_data) < 0;
+
+        set_register(context_.curr_instr->reg1, val);
+        cpu_set_flags(z, 1, h, c);
+    };
+
+    instruction_processors_[IN_SBC] = [&]()
+    {
+        std::uint8_t val = context_.curr_fetch_data + get_carry_flag();
+
+        int z = read_register(context_.curr_instr->reg1) - val == 0;
+        int h = ((int)read_register(context_.curr_instr->reg1) & 0xF) -
+                    ((int)context_.curr_fetch_data & 0xF) - ((int)get_carry_flag()) <
+                0;
+
+        int c = ((int)read_register(context_.curr_instr->reg1)) - ((int)context_.curr_fetch_data) -
+                    ((int)get_carry_flag()) <
+                0;
+
+        set_register(context_.curr_instr->reg1, read_register(context_.curr_instr->reg1) - val);
+        cpu_set_flags(z, 1, h, c);
+    };
 }
+
+bool Cpu::is_16_bit(RegisterType rt) { return rt >= RegisterType::RT_AF; }
 
 void Cpu::set_bus(Bus* bus) { bus_ = bus; }
 
@@ -466,12 +617,17 @@ bool Cpu::step()
         fetch_instruction();
         fetch_data();
 
-        std::cout << std::format("{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} BC: {:02X}{:02X} "
-                                 "DE: {:02X}{:02X} HL: {:02X}{:02X}\n",
-                                 pc, get_instruction_name(context_.curr_instr->type),
-                                 context_.curr_opcode, bus_->read(pc + 1), bus_->read(pc + 2),
-                                 context_.regs.a, context_.regs.b, context_.regs.c, context_.regs.d,
-                                 context_.regs.e, context_.regs.h, context_.regs.l);
+        std::array<char, 16> flags;
+        sprintf(flags.data(), "%c%c%c%c", context_.regs.f & (1 << 7) ? 'Z' : '-',
+                context_.regs.f & (1 << 6) ? 'N' : '-', context_.regs.f & (1 << 5) ? 'H' : '-',
+                context_.regs.f & (1 << 4) ? 'C' : '-');
+
+        std::cout << std::format(
+            "{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} F: {} BC: {:02X}{:02X} "
+            "DE: {:02X}{:02X} HL: {:02X}{:02X}\n",
+            pc, get_instruction_name(context_.curr_instr->type), context_.curr_opcode,
+            bus_->read(pc + 1), bus_->read(pc + 2), context_.regs.a, flags.data(), context_.regs.b,
+            context_.regs.c, context_.regs.d, context_.regs.e, context_.regs.h, context_.regs.l);
 
         execute();
     }
