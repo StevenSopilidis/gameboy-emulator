@@ -200,8 +200,45 @@ auto get_instruction = [](std::size_t index)
         arr[0x9E] = {.type = IN_SBC, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_HL};
         arr[0x9F] = {.type = IN_SBC, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_A};
 
+        // 0xAx
+        arr[0xA0] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_B};
+        arr[0xA1] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_C};
+        arr[0xA2] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_D};
+        arr[0xA3] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_E};
+        arr[0xA4] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_H};
+        arr[0xA5] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_L};
+        arr[0xA6] = {.type = IN_AND, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_HL};
+        arr[0xA7] = {.type = IN_AND, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_A};
+        arr[0xA8] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_B};
+        arr[0xA9] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_C};
+        arr[0xAA] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_D};
+        arr[0xAB] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_E};
+        arr[0xAC] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_H};
+        arr[0xAD] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_L};
+        arr[0xAE] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_HL};
+        arr[0xAF] = {.type = IN_XOR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_A};
         arr[0xAF] = {.type = IN_XOR, .mode = AM_R, .reg1 = RT_A};
 
+        // 0xBx
+        arr[0xB0] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_B};
+        arr[0xB1] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_C};
+        arr[0xB2] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_D};
+        arr[0xB3] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_E};
+        arr[0xB4] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_H};
+        arr[0xB5] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_L};
+        arr[0xB6] = {.type = IN_OR, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_HL};
+        arr[0xB7] = {.type = IN_OR, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_A};
+        arr[0xB8] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_B};
+        arr[0xB9] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_C};
+        arr[0xBA] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_D};
+        arr[0xBB] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_E};
+        arr[0xBC] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_H};
+        arr[0xBD] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_L};
+        arr[0xBE] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_HL};
+        arr[0xBF] = {.type = IN_CP, .mode = AM_R_R, .reg1 = RT_A, .reg2 = RT_A};
+        arr[0xBF] = {.type = IN_CP, .mode = AM_R, .reg1 = RT_A};
+
+        // 0xCx
         arr[0xC0] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_NZ};
         arr[0xC1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_BC};
         arr[0xC2] = {.type = IN_JP, .mode = AM_D16, .cond = CT_NZ};
@@ -213,6 +250,7 @@ auto get_instruction = [](std::size_t index)
         arr[0xC8] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_Z};
         arr[0xC9] = {.type = IN_RET};
         arr[0xCA] = {.type = IN_JP, .mode = AM_D16, .cond = CT_Z};
+        arr[0xCB] = {.type = IN_CB, .mode = AM_D8};
         arr[0xCC] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_Z};
         arr[0xCD] = {.type = IN_CALL, .mode = AM_D16};
         arr[0xCE] = {.type = IN_ADC, .mode = AM_R_D8, .reg1 = RT_A};
@@ -236,10 +274,12 @@ auto get_instruction = [](std::size_t index)
         arr[0xE1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_HL};
         arr[0xE2] = {.type = IN_LD, .mode = AM_MR_R, .reg1 = RT_C, .reg2 = RT_A};
         arr[0xE5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_HL};
+        arr[0xE6] = {.type = IN_AND, .mode = AM_D8};
         arr[0xE7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x20};
         arr[0xE8] = {.type = IN_ADD, .mode = AM_R_D8, .reg1 = RT_SP};
         arr[0xE9] = {.type = IN_JP, .mode = AM_MR, .reg1 = RT_HL};
         arr[0xEA] = {.type = IN_LD, .mode = AM_A16_R, .reg2 = RT_A};
+        arr[0xEA] = {.type = IN_XOR, .mode = AM_D8};
         arr[0xEF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x28};
 
         // 0xFX
@@ -248,8 +288,10 @@ auto get_instruction = [](std::size_t index)
         arr[0xF2] = {.type = IN_LD, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_C};
         arr[0xF3] = {.type = IN_DI, .mode = AM_IMP};
         arr[0xF5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_AF};
+        arr[0xF6] = {.type = IN_OR, .mode = AM_D8};
         arr[0xF7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x30};
         arr[0xFA] = {.type = IN_LD, .mode = AM_R_A16, .reg1 = RT_A};
+        arr[0xFE] = {.type = IN_CP, .mode = AM_D8};
         arr[0xFF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x38};
 
         return arr;

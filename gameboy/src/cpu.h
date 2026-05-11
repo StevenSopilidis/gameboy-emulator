@@ -72,7 +72,11 @@ class Cpu
     void          execute();
     std::uint16_t read_register(RegisterType reg);
     void          set_register(RegisterType reg, std::uint16_t val);
-    static bool   is_16_bit(RegisterType rt);
+    std::uint8_t read_register8(RegisterType reg);
+    void          set_register8(RegisterType reg, std::uint8_t val);
+
+    static bool         is_16_bit(RegisterType rt);
+    static RegisterType decode_reg(std::uint8_t reg);
 
     auto flag_z() const { return BIT(context_.regs.f, 7); }
     auto flag_n() const { return BIT(context_.regs.f, 6); }

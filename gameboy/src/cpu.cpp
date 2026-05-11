@@ -36,6 +36,20 @@ bool Cpu::check_cond()
     return false;
 }
 
+RegisterType Cpu::decode_reg(std::uint8_t reg)
+{
+    static std::array<RegisterType, 8> rt_lookups = {
+        RT_B, RT_C, RT_D, RT_E, RT_H, RT_L, RT_HL, RT_A,
+    };
+
+    if (reg > 0b111)
+    {
+        return RT_NONE;
+    }
+
+    return rt_lookups[reg];
+}
+
 void Cpu::cpu_set_flags(char z, char n, char h, char c)
 {
     if (z != -1)
@@ -334,6 +348,158 @@ void Cpu::init()
         set_register(context_.curr_instr->reg1, read_register(context_.curr_instr->reg1) - val);
         cpu_set_flags(z, 1, h, c);
     };
+
+    instruction_processors_[IN_AND] = [&]()
+    {
+        context_.regs.a &= context_.curr_fetch_data;
+        cpu_set_flags(context_.regs.a == 0, 0, 1, 0);
+    };
+
+    instruction_processors_[IN_OR] = [&]()
+    {
+        context_.regs.a |= context_.curr_fetch_data;
+        cpu_set_flags(context_.regs.a == 0, 0, 0, 0);
+    };
+
+    instruction_processors_[IN_XOR] = [&]()
+    {
+        context_.regs.a ^= context_.curr_fetch_data;
+        cpu_set_flags(context_.regs.a == 0, 0, 0, 0);
+    };
+
+    instruction_processors_[IN_CP] = [&]()
+    {
+        auto n = (int)context_.regs.a - (int)context_.curr_fetch_data;
+        cpu_set_flags(n == 0, 1,
+                      ((int)context_.regs.a & 0x0F) - ((int)context_.curr_fetch_data & 0x0F) < 0,
+                      n < 0);
+    };
+
+    instruction_processors_[IN_CB] = [&]()
+    {
+        auto op = static_cast<std::uint8_t>(context_.curr_fetch_data);
+
+        auto reg     = decode_reg(op & 0b111);
+        auto bit     = static_cast<uint8_t>((op >> 3) & 0b111);
+        auto bit_op  = static_cast<uint8_t>((op >> 6) & 0b11);
+        auto reg_val = read_register8(reg);
+
+        inc_cycles(1);
+
+        if (reg == RT_HL)
+        {
+            inc_cycles(2);
+        }
+
+        switch (bit_op)
+        {
+        case 1:
+            // BIT
+            cpu_set_flags(!(reg_val & (1 << bit)), 0, 1, -1);
+            return;
+        case 2:
+            // RST
+            reg_val &= ~(1 << bit);
+            set_register8(reg, reg_val);
+            return;
+        case 3:
+            // SET
+            reg_val |= (1 << bit);
+            set_register8(reg, reg_val);
+            return;
+        }
+
+        auto flagC = get_carry_flag();
+
+        switch (bit)
+        {
+        case 0:
+        {
+            // RLC
+            bool setC   = false;
+            auto result = static_cast<uint8_t>((reg_val << 1) & 0xFF);
+
+            if ((reg_val & (1 << 7)) != 0)
+            {
+                result |= 1;
+                setC = true;
+            }
+
+            set_register8(reg, result);
+            cpu_set_flags(result == 0, 0, 0, setC);
+        }
+            return;
+        case 1:
+        {
+            // RRC
+            auto old = reg_val;
+            reg_val >>= 1;
+            reg_val |= (old << 7);
+
+            set_register8(reg, reg_val);
+            cpu_set_flags(!reg_val, 0, 0, old & 1);
+        }
+            return;
+        case 2:
+        {
+            // RL
+            auto old = reg_val;
+            reg_val <<= 1;
+            reg_val |= flagC;
+
+            set_register8(reg, reg_val);
+            cpu_set_flags(!reg_val, 0, 0, !!(old & 0x80));
+        }
+            return;
+        case 3:
+        {
+            // RR
+            auto old = reg_val;
+            reg_val >>= 1;
+            reg_val |= (flagC << 7);
+
+            set_register8(reg, reg_val);
+            cpu_set_flags(!reg_val, 0, 0, old & 1);
+        }
+            return;
+        case 4:
+        {
+            // SLA
+            auto old = reg_val;
+            reg_val <<= 1;
+
+            set_register8(reg, reg_val);
+            cpu_set_flags(!reg_val, 0, 0, !!(old & 0x80));
+        }
+            return;
+        case 5:
+        {
+            // SRA
+            auto u = static_cast<uint8_t>((int8_t)reg_val >> 1);
+            set_register8(reg, u);
+            cpu_set_flags(!u, 0, 0, reg_val & 1);
+        }
+            return;
+        case 6:
+        {
+            // SWAP
+            reg_val = ((reg_val & 0xF0) >> 4) | ((reg_val & 0xF) << 4);
+            set_register8(reg, reg_val);
+            cpu_set_flags(reg_val == 0, 0, 0, 0);
+        }
+            return;
+        case 7:
+        {
+            // SRL
+            auto u = static_cast<uint8_t>(reg_val >> 1);
+            set_register8(reg, u);
+            cpu_set_flags(!u, 0, 0, reg_val & 1);
+        }
+            return;
+        }
+    };
+
+    throw std::runtime_error("INVALID CB INSTRUCTION"); 
 }
 
 bool Cpu::is_16_bit(RegisterType rt) { return rt >= RegisterType::RT_AF; }
@@ -442,6 +608,69 @@ void Cpu::set_register(RegisterType reg, std::uint16_t val)
         break;
     case RT_NONE:
         break;
+    }
+}
+
+std::uint8_t Cpu::read_register8(RegisterType reg)
+{
+    switch (reg)
+    {
+    case RT_A:
+        return context_.regs.a;
+    case RT_F:
+        return context_.regs.f;
+    case RT_B:
+        return context_.regs.b;
+    case RT_C:
+        return context_.regs.c;
+    case RT_D:
+        return context_.regs.d;
+    case RT_E:
+        return context_.regs.e;
+    case RT_H:
+        return context_.regs.h;
+    case RT_L:
+        return context_.regs.l;
+    case RT_HL:
+        return bus_->read(read_register(RT_HL));
+    default:
+        throw std::runtime_error("ERROR INVALID REG8");
+    }
+}
+
+void Cpu::set_register8(RegisterType reg, std::uint8_t val)
+{
+    switch (reg)
+    {
+    case RT_A:
+        context_.regs.a = val & 0xFF;
+        break;
+    case RT_F:
+        context_.regs.f = val & 0xFF;
+        break;
+    case RT_B:
+        context_.regs.b = val & 0xFF;
+        break;
+    case RT_C:
+        context_.regs.c = val & 0xFF;
+        break;
+    case RT_D:
+        context_.regs.d = val & 0xFF;
+        break;
+    case RT_E:
+        context_.regs.e = val & 0xFF;
+        break;
+    case RT_H:
+        context_.regs.h = val & 0xFF;
+        break;
+    case RT_L:
+        context_.regs.l = val & 0xFF;
+        break;
+    case RT_HL:
+        bus_->write(read_register(RT_HL), val);
+        break;
+    default:
+        throw std::runtime_error("ERROR INVALID REG8");
     }
 }
 
