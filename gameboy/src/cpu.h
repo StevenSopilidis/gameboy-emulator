@@ -38,7 +38,18 @@ struct CpuContext
     bool stepping;
 
     bool         int_master_enabled;
+    bool         enabling_ime;
     std::uint8_t ie_register;
+    std::uint8_t int_flags;
+};
+
+enum InterruptType : uint8_t
+{
+    IT_VBLANK    = 1,
+    IT_LCD_START = 2,
+    IT_TIMER     = 4,
+    IT_SERIAL    = 8,
+    IT_JOYPAD    = 16,
 };
 
 class Cpu
@@ -72,11 +83,19 @@ class Cpu
     void          execute();
     std::uint16_t read_register(RegisterType reg);
     void          set_register(RegisterType reg, std::uint16_t val);
-    std::uint8_t read_register8(RegisterType reg);
+    std::uint8_t  read_register8(RegisterType reg);
     void          set_register8(RegisterType reg, std::uint8_t val);
+
+    std::uint8_t int_flags();
+    void         set_int_flags(std::uint8_t val);
 
     static bool         is_16_bit(RegisterType rt);
     static RegisterType decode_reg(std::uint8_t reg);
+
+    void request_interrupt(InterruptType i);
+    void handle_interrupts();
+    void handle_interrupt(std::uint16_t addr);
+    bool int_check(std::uint16_t addr, InterruptType it);
 
     auto flag_z() const { return BIT(context_.regs.f, 7); }
     auto flag_n() const { return BIT(context_.regs.f, 6); }

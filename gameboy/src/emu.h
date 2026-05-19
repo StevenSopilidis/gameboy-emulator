@@ -4,15 +4,19 @@
 #include "cart.h"
 #include "cpu.h"
 #include "ram.h"
+#include "ui.h"
 
 #include <cstdint>
+#include <thread>
 
 namespace game_boy
 {
+
 struct EmuContext
 {
     bool          paused;
     bool          running;
+    bool          die;
     std::uint64_t ticks;
 };
 
@@ -27,13 +31,16 @@ class Emu
 
     [[nodiscard]] const EmuContext& get_context() const noexcept;
     void                            run(int argc, char** argv);
-    static void                     delay(std::uint32_t ms);
+    void                            run_cpu();
 
   private:
     EmuContext context_;
     Cart       cart_;
+    UI         ui_;
     Ram        ram_;
     Cpu        cpu_;
     Bus        bus_;
+
+    std::thread cpu_thread_;
 };
 } // namespace game_boy

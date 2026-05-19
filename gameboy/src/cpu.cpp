@@ -158,6 +158,8 @@ void Cpu::init()
 
     instruction_processors_[IN_DI] = [&]() { context_.int_master_enabled = false; };
 
+    instruction_processors_[IN_EI] = [&]() { context_.enabling_ime = true; };
+
     instruction_processors_[IN_XOR] = [&]()
     {
         context_.regs.a ^= context_.curr_fetch_data & 0Xff;
@@ -375,6 +377,80 @@ void Cpu::init()
                       n < 0);
     };
 
+    instruction_processors_[IN_RLCA] = [&]()
+    {
+        auto u          = context_.regs.a;
+        auto c          = static_cast<uint8_t>((u >> 8) & 1);
+        u               = (u << 1) | c;
+        context_.regs.a = u;
+
+        cpu_set_flags(0, 0, 0, c);
+    };
+
+    instruction_processors_[IN_RRCA] = [&]()
+    {
+        auto b = context_.regs.a & 1;
+        context_.regs.a >>= 1;
+        context_.regs.a |= (b << 7);
+
+        cpu_set_flags(0, 0, 0, b);
+    };
+
+    instruction_processors_[IN_RLA] = [&]()
+    {
+        auto u  = context_.regs.a;
+        auto cf = get_carry_flag();
+        auto c  = (u >> 7) & 1;
+
+        context_.regs.a = (u << 1) | cf;
+        cpu_set_flags(0, 0, 0, c);
+    };
+
+    instruction_processors_[IN_RRA] = [&]()
+    {
+        auto cf     = get_carry_flag();
+        auto new_cf = context_.regs.a & 1;
+
+        context_.regs.a >>= 1;
+        context_.regs.a |= (cf << 7);
+
+        cpu_set_flags(0, 0, 0, new_cf);
+    };
+
+    instruction_processors_[IN_DAA] = [&]()
+    {
+        auto u{0};
+        auto cf{0};
+
+        if (flag_h() || (!flag_n() && (context_.regs.a & 0xF) > 9))
+        {
+            u = 6;
+        }
+
+        if (flag_c() || (!flag_n() && context_.regs.a > 0x99))
+        {
+            u |= 0x60;
+            cf = 1;
+        }
+
+        context_.regs.a += flag_n() ? -u : u;
+        cpu_set_flags(context_.regs.a == 0, -1, 0, cf);
+    };
+
+    instruction_processors_[IN_CPL] = [&]()
+    {
+        context_.regs.a = ~context_.regs.a;
+        cpu_set_flags(-1, 1, 1, -1);
+    };
+
+    instruction_processors_[IN_SCF] = [&]() { cpu_set_flags(-1, 0, 0, 1); };
+
+    instruction_processors_[IN_CCF] = [&]() { cpu_set_flags(-1, 0, 0, get_carry_flag() ^ 1); };
+
+    instruction_processors_[IN_HALT] = [&]() { context_.halted = true; };
+
+    instruction_processors_[IN_STOP] = [&]() { throw std::runtime_error("STOPPING PROCESS\n"); };
+
     instruction_processors_[IN_CB] = [&]()
     {
         auto op = static_cast<std::uint8_t>(context_.curr_fetch_data);
@@ -497,9 +573,9 @@ void Cpu::init()
         }
             return;
         }
-    };
 
-    throw std::runtime_error("INVALID CB INSTRUCTION"); 
+        throw std::runtime_error("INVALID CB INSTRUCTION");
+    };
 }
 
 bool Cpu::is_16_bit(RegisterType rt) { return rt >= RegisterType::RT_AF; }
@@ -860,9 +936,33 @@ bool Cpu::step()
 
         execute();
     }
+    else
+    {
+        inc_cycles(1);
+
+        if (context_.int_flags != 0u)
+        {
+            context_.halted = false;
+        }
+    }
+
+    if (context_.int_master_enabled)
+    {
+        handle_interrupts();
+        context_.enabling_ime = false;
+    }
+
+    if (context_.enabling_ime)
+    {
+        context_.int_master_enabled = true;
+    }
 
     return true;
 }
+
+std::uint8_t Cpu::int_flags() { return context_.int_flags; }
+
+void Cpu::set_int_flags(std::uint8_t val) { context_.int_flags = val; }
 
 std::uint8_t Cpu::get_ie_register() const noexcept { return context_.ie_register; }
 
@@ -909,6 +1009,45 @@ void Cpu::goto_addr(std::uint16_t addr, bool pushpc)
 
         context_.regs.pc = addr;
         inc_cycles(1);
+    }
+}
+
+void Cpu::handle_interrupt(std::uint16_t addr)
+{
+    stack_push16(context_.regs.pc);
+    context_.regs.pc = addr;
+}
+
+bool Cpu::int_check(std::uint16_t addr, InterruptType it)
+{
+    if (context_.int_flags & it && context_.ie_register & it)
+    {
+        handle_interrupt(addr);
+        context_.int_flags &= ~it;
+        context_.halted             = false;
+        context_.int_master_enabled = false;
+        return true;
+    }
+
+    return false;
+}
+
+void Cpu::handle_interrupts()
+{
+    if (int_check(0x40, InterruptType::IT_VBLANK))
+    {
+    }
+    else if (int_check(0x48, InterruptType::IT_LCD_START))
+    {
+    }
+    else if (int_check(0x50, InterruptType::IT_TIMER))
+    {
+    }
+    else if (int_check(0x58, InterruptType::IT_SERIAL))
+    {
+    }
+    else if (int_check(0x60, InterruptType::IT_JOYPAD))
+    {
     }
 }
 

@@ -1,7 +1,5 @@
 #include "emu.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <format>
 #include <iostream>
 #include <stdexcept>
@@ -10,7 +8,33 @@ namespace game_boy
 {
 const EmuContext& Emu::get_context() const noexcept { return context_; }
 
-void Emu::delay(std::uint32_t ms) { SDL_Delay(ms); }
+void Emu::run_cpu()
+{
+    cpu_.init();
+    cpu_.set_bus(&bus_);
+    bus_.insert_cpu(&cpu_);
+
+    context_.running = true;
+    context_.paused  = false;
+    context_.ticks   = 0;
+
+    ui_.insert_emu_context(&context_);
+
+    while (context_.running)
+    {
+        if (context_.paused)
+        {
+            continue;
+        }
+
+        if (!cpu_.step())
+        {
+            throw std::runtime_error("Cpu stopped");
+        }
+
+        context_.ticks++;
+    }
+}
 
 void Emu::run(int argc, char** argv)
 {
@@ -29,33 +53,14 @@ void Emu::run(int argc, char** argv)
 
     std::cout << "Card loaded\n";
 
-    SDL_Init(SDL_INIT_VIDEO);
-    std::cout << "SDL was initialized\n";
-    TTF_Init();
-    std::cout << "TTF was initialized\n";
+    // cpu_thread_ = std::thread([&]() { run_cpu(); });
 
-    cpu_.init();
-    cpu_.set_bus(&bus_);
-    bus_.insert_cpu(&cpu_);
+    ui_.init();
 
-    context_.running = true;
-    context_.paused  = false;
-    context_.ticks   = 0;
-
-    while (context_.running)
+    while (!context_.die)
     {
-        if (context_.paused)
-        {
-            delay(10);
-            continue;
-        }
-
-        if (!cpu_.step())
-        {
-            throw std::runtime_error("Cpu stopped");
-        }
-
-        context_.ticks++;
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+        ui_.handle_events();
     }
 }
 

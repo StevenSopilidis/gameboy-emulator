@@ -62,7 +62,8 @@ std::uint8_t Bus::read(std::uint16_t addr)
     if (addr < 0xFEA0)
     {
         // OAM
-        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+        std::cout << "BUS READ NOT IMPLEMENTED\n";
+        return 0;
     }
 
     if (addr < 0xFF00)
@@ -74,7 +75,8 @@ std::uint8_t Bus::read(std::uint16_t addr)
     if (addr < 0xFF80)
     {
         // IO Registers
-        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+        std::cout << "BUS READ NOT IMPLEMENTED\n";
+        return 0;
     }
 
     if (addr == 0XFFFF)
@@ -104,7 +106,8 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
 
     if (addr < 0xA000)
     {
-        throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
+        std::cout << "BUS WRITE NOT IMPLEMENTED\n";
+        return; 
     }
 
     if (addr < 0xC000)
@@ -130,7 +133,8 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
     if (addr < 0xFEA0)
     {
         // OAM
-        throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
+        std::cout << "BUS WRITE NOT IMPLEMENTED\n";
+        return;
     }
 
     if (addr < 0xFF00)
