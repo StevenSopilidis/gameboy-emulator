@@ -7,6 +7,9 @@
 namespace game_boy
 {
 
+class CpuContext;
+class Bus;
+
 // type of instructions
 enum InstructionType : std::uint8_t
 {
@@ -127,5 +130,7 @@ struct Instruction
 std::optional<Instruction> instruction_by_opcode(std::uint8_t opcode);
 
 std::string_view get_instruction_name(InstructionType instr);
+
+void inst_to_str(CpuContext* ctx, Bus* bus, std::string& str);
 
 } // namespace game_boy

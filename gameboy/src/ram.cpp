@@ -35,24 +35,12 @@ std::uint8_t Ram::hram_read(std::uint16_t addr)
 {
     addr -= 0xFF80;
 
-    if (addr >= 0x80)
-    {
-        throw std::runtime_error(
-            std::format("Invalid Address passed: {:#08X}  for hram_read", addr + 0xFF80));
-    }
-
     return context_.hram[addr];
 }
 
 void Ram::hram_write(std::uint16_t addr, std::uint8_t val)
 {
     addr -= 0xFF80;
-
-    if (addr >= 0x80)
-    {
-        throw std::runtime_error(
-            std::format("Invalid Address passed: {:#08X} for hram_write", addr + 0xFF80));
-    }
 
     context_.hram[addr] = val;
 }

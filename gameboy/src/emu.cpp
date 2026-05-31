@@ -1,5 +1,7 @@
 #include "emu.h"
 
+#include "timer.h"
+
 #include <format>
 #include <iostream>
 #include <stdexcept>
@@ -11,6 +13,7 @@ const EmuContext& Emu::get_context() const noexcept { return context_; }
 void Emu::run_cpu()
 {
     cpu_.init();
+    Timer::get_instance().connect_cpu(&cpu_);
     cpu_.set_bus(&bus_);
     bus_.insert_cpu(&cpu_);
 
@@ -31,8 +34,6 @@ void Emu::run_cpu()
         {
             throw std::runtime_error("Cpu stopped");
         }
-
-        context_.ticks++;
     }
 }
 
@@ -53,7 +54,7 @@ void Emu::run(int argc, char** argv)
 
     std::cout << "Card loaded\n";
 
-    // cpu_thread_ = std::thread([&]() { run_cpu(); });
+    cpu_thread_ = std::thread([&]() { run_cpu(); });
 
     ui_.init();
 
@@ -61,6 +62,17 @@ void Emu::run(int argc, char** argv)
     {
         std::this_thread::sleep_for(std::chrono::microseconds(1000));
         ui_.handle_events();
+    }
+}
+
+void Emu::emu_cycles(int cpu_cycles)
+{
+    int n = cpu_cycles * 4;
+
+    for (int i{0}; i < n; i++)
+    {
+        context_.ticks++;
+        Timer::get_instance().tick();
     }
 }
 

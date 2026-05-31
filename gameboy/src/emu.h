@@ -4,6 +4,7 @@
 #include "cart.h"
 #include "cpu.h"
 #include "ram.h"
+#include "timer.h"
 #include "ui.h"
 
 #include <cstdint>
@@ -32,6 +33,8 @@ class Emu
     [[nodiscard]] const EmuContext& get_context() const noexcept;
     void                            run(int argc, char** argv);
     void                            run_cpu();
+
+    void emu_cycles(int cpu_cycles);
 
   private:
     EmuContext context_;

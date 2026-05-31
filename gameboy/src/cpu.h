@@ -2,6 +2,7 @@
 
 #include "bus.h"
 #include "common.h"
+#include "debug.h"
 #include "instructions.h"
 
 #include <cstdint>
@@ -74,6 +75,8 @@ class Cpu
     std::uint8_t  stack_pop();
     std::uint16_t stack_pop16();
 
+    void request_interrupt(InterruptType i);
+
   private:
     using IN_PROC = std::function<void()>;
 
@@ -92,7 +95,6 @@ class Cpu
     static bool         is_16_bit(RegisterType rt);
     static RegisterType decode_reg(std::uint8_t reg);
 
-    void request_interrupt(InterruptType i);
     void handle_interrupts();
     void handle_interrupt(std::uint16_t addr);
     bool int_check(std::uint16_t addr, InterruptType it);
@@ -112,6 +114,7 @@ class Cpu
     int        cycles_{0};
     CpuContext context_;
     Bus*       bus_;
+    Debug      debug_;
     // map that maps instruction to function for processing them
     std::unordered_map<InstructionType, IN_PROC> instruction_processors_;
 };

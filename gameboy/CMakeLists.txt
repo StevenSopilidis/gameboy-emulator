@@ -10,6 +10,8 @@ set(PROJECT_SOURCE_FILES
     src/instructions.cpp
     src/ram.cpp
     src/ui.cpp
+    src/io.cpp
+    src/debug.cpp
 )
 
 # Find SDL2 via pkg-config

@@ -1,7 +1,9 @@
 #include "instructions.h"
 
+#include "bus.h"
+#include "cpu.h"
+
 #include <array>
-#include <iostream>
 
 namespace game_boy
 {
@@ -12,6 +14,9 @@ constexpr std::array<std::string_view, 48> instr_lookup{
     "POP",    "JP",     "PUSH",   "RET",     "CB",     "CALL",   "RETI",   "LDH",
     "JPHL",   "DI",     "EI",     "RST",     "IN_ERR", "IN_RLC", "IN_RRC", "IN_RL",
     "IN_RR",  "IN_SLA", "IN_SRA", "IN_SWAP", "IN_SRL", "IN_BIT", "IN_RES", "IN_SET"};
+
+constexpr std::array<std::string_view, 15> rt_lookups = {
+    "<NONE>", "A", "F", "B", "C", "D", "E", "H", "L", "AF", "BC", "DE", "HL", "SP", "PC"};
 
 auto get_instruction = [](std::size_t index)
 {
@@ -66,6 +71,7 @@ auto get_instruction = [](std::size_t index)
         arr[0x24] = {.type = IN_INC, .mode = AM_R, .reg1 = RT_H};
         arr[0x25] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_H};
         arr[0x26] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_H};
+        arr[0x27] = {.type = IN_DAA};
         arr[0x28] = {.type = IN_JR, .mode = AM_D8, .cond = CT_Z};
         arr[0x29] = {.type = IN_ADD, .mode = AM_R_R, .reg1 = RT_HL, .reg2 = RT_HL};
         arr[0x2A] = {.type = IN_LD, .mode = AM_R_HLI, .reg1 = RT_A, .reg2 = RT_HL};
@@ -73,6 +79,7 @@ auto get_instruction = [](std::size_t index)
         arr[0x2C] = {.type = IN_INC, .mode = AM_R, .reg1 = RT_L};
         arr[0x2D] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_L};
         arr[0x2E] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_L};
+        arr[0x2F] = {.type = IN_CPL};
 
         // 0x3X
         arr[0x30] = {.type = IN_JR, .mode = AM_D8, .cond = CT_NC};
@@ -82,6 +89,7 @@ auto get_instruction = [](std::size_t index)
         arr[0x34] = {.type = IN_INC, .mode = AM_MR, .reg1 = RT_HL};
         arr[0x35] = {.type = IN_DEC, .mode = AM_MR, .reg1 = RT_HL};
         arr[0x36] = {.type = IN_LD, .mode = AM_MR_D8, .reg1 = RT_HL};
+        arr[0x3F] = {.type = IN_SCF};
         arr[0x38] = {.type = IN_JR, .mode = AM_D8, .cond = CT_C};
         arr[0x39] = {.type = IN_ADD, .mode = AM_R_R, .reg1 = RT_HL, .reg2 = RT_SP};
         arr[0x3A] = {.type = IN_LD, .mode = AM_R_HLD, .reg1 = RT_A, .reg2 = RT_HL};
@@ -89,6 +97,7 @@ auto get_instruction = [](std::size_t index)
         arr[0x3C] = {.type = IN_INC, .mode = AM_R, .reg1 = RT_A};
         arr[0x3D] = {.type = IN_DEC, .mode = AM_R, .reg1 = RT_A};
         arr[0x3E] = {.type = IN_LD, .mode = AM_R_D8, .reg1 = RT_A};
+        arr[0x3F] = {.type = IN_CCF};
 
         // 0x4X
         arr[0x40] = {.type = IN_LD, .mode = AM_R_R, .reg1 = RT_B, .reg2 = RT_B};
@@ -249,7 +258,7 @@ auto get_instruction = [](std::size_t index)
         arr[0xC3] = {.type = IN_JP, .mode = AM_D16};
         arr[0xC4] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_NZ};
         arr[0xC5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_BC};
-        arr[0xC6] = {.type = IN_ADD, .mode = AM_R_A8, .reg1 = RT_A};
+        arr[0xC6] = {.type = IN_ADD, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xC7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x00};
         arr[0xC8] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_Z};
         arr[0xC9] = {.type = IN_RET};
@@ -266,7 +275,7 @@ auto get_instruction = [](std::size_t index)
         arr[0xD2] = {.type = IN_JP, .mode = AM_D16, .cond = CT_NC};
         arr[0xD4] = {.type = IN_CALL, .mode = AM_D16, .cond = CT_NC};
         arr[0xD5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_DE};
-        arr[0xD6] = {.type = IN_SUB, .mode = AM_D8};
+        arr[0xD6] = {.type = IN_SUB, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xD7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x10};
         arr[0xD8] = {.type = IN_RET, .mode = AM_IMP, .cond = CT_C};
         arr[0xD9] = {.type = IN_RETI};
@@ -280,12 +289,12 @@ auto get_instruction = [](std::size_t index)
         arr[0xE1] = {.type = IN_POP, .mode = AM_R, .reg1 = RT_HL};
         arr[0xE2] = {.type = IN_LD, .mode = AM_MR_R, .reg1 = RT_C, .reg2 = RT_A};
         arr[0xE5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_HL};
-        arr[0xE6] = {.type = IN_AND, .mode = AM_D8};
+        arr[0xE6] = {.type = IN_AND, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xE7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x20};
         arr[0xE8] = {.type = IN_ADD, .mode = AM_R_D8, .reg1 = RT_SP};
-        arr[0xE9] = {.type = IN_JP, .mode = AM_MR, .reg1 = RT_HL};
+        arr[0xE9] = {.type = IN_JP, .mode = AM_R, .reg1 = RT_HL};
         arr[0xEA] = {.type = IN_LD, .mode = AM_A16_R, .reg2 = RT_A};
-        arr[0xEA] = {.type = IN_XOR, .mode = AM_D8};
+        arr[0xEE] = {.type = IN_XOR, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xEF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x28};
 
         // 0xFX
@@ -294,13 +303,13 @@ auto get_instruction = [](std::size_t index)
         arr[0xF2] = {.type = IN_LD, .mode = AM_R_MR, .reg1 = RT_A, .reg2 = RT_C};
         arr[0xF3] = {.type = IN_DI, .mode = AM_IMP};
         arr[0xF5] = {.type = IN_PUSH, .mode = AM_R, .reg1 = RT_AF};
-        arr[0xF6] = {.type = IN_OR, .mode = AM_D8};
+        arr[0xF6] = {.type = IN_OR, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xF7] = {.type = IN_RST, .mode = AM_IMP, .param = 0x30};
         arr[0xF8] = {.type = IN_LD, .mode = AM_HL_SPR, .reg1 = RT_HL, .reg2 = RT_SP};
         arr[0xF9] = {.type = IN_LD, .mode = AM_R_R, .reg1 = RT_SP, .reg2 = RT_HL};
         arr[0xFA] = {.type = IN_LD, .mode = AM_R_A16, .reg1 = RT_A};
         arr[0xFB] = {.type = IN_EI};
-        arr[0xFE] = {.type = IN_CP, .mode = AM_D8};
+        arr[0xFE] = {.type = IN_CP, .mode = AM_R_D8, .reg1 = RT_A};
         arr[0xFF] = {.type = IN_RST, .mode = AM_IMP, .param = 0x38};
 
         return arr;
@@ -320,5 +329,109 @@ std::optional<Instruction> instruction_by_opcode(std::uint8_t opcode)
 }
 
 std::string_view get_instruction_name(InstructionType instr) { return instr_lookup[instr]; }
+
+void inst_to_str(CpuContext* ctx, Bus* bus, std::string& str)
+{
+    auto inst = ctx->curr_instr;
+    sprintf(str.data(), "%s ", get_instruction_name(inst->type).data());
+
+    switch (inst->mode)
+    {
+    case AM_IMP:
+        return;
+
+    case AM_R_D16:
+    case AM_R_A16:
+        sprintf(str.data(), "%s %s,$%04X", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), ctx->curr_fetch_data);
+        return;
+
+    case AM_R:
+        sprintf(str.data(), "%s %s", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data());
+        return;
+
+    case AM_R_R:
+        sprintf(str.data(), "%s %s,%s", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_MR_R:
+        sprintf(str.data(), "%s (%s),%s", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_MR:
+        sprintf(str.data(), "%s (%s)", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data());
+        return;
+
+    case AM_R_MR:
+        sprintf(str.data(), "%s %s,(%s)", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_R_D8:
+    case AM_R_A8:
+        sprintf(str.data(), "%s %s,$%02X", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), ctx->curr_fetch_data & 0xFF);
+        return;
+
+    case AM_R_HLI:
+        sprintf(str.data(), "%s %s,(%s+)", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_R_HLD:
+        sprintf(str.data(), "%s %s,(%s-)", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_HLI_R:
+        sprintf(str.data(), "%s (%s+),%s", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_HLD_R:
+        sprintf(str.data(), "%s (%s-),%s", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), rt_lookups[inst->reg2].data());
+        return;
+
+    case AM_A8_R:
+        sprintf(str.data(), "%s $%02X,%s", get_instruction_name(inst->type).data(),
+                bus->read(ctx->regs.pc - 1), rt_lookups[inst->reg2].data());
+
+        return;
+
+    case AM_HL_SPR:
+        sprintf(str.data(), "%s (%s),SP+%d", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), ctx->curr_fetch_data & 0xFF);
+        return;
+
+    case AM_D8:
+        sprintf(str.data(), "%s $%02X", get_instruction_name(inst->type).data(),
+                ctx->curr_fetch_data & 0xFF);
+        return;
+
+    case AM_D16:
+        sprintf(str.data(), "%s $%04X", get_instruction_name(inst->type).data(),
+                ctx->curr_fetch_data);
+        return;
+
+    case AM_MR_D8:
+        sprintf(str.data(), "%s (%s),$%02X", get_instruction_name(inst->type).data(),
+                rt_lookups[inst->reg1].data(), ctx->curr_fetch_data & 0xFF);
+        return;
+
+    case AM_A16_R:
+        sprintf(str.data(), "%s ($%04X),%s", get_instruction_name(inst->type).data(),
+                ctx->curr_fetch_data, rt_lookups[inst->reg2].data());
+        return;
+
+    default:
+        fprintf(stderr, "INVALID AM: %d\n", inst->mode);
+        throw std::runtime_error("Invalid adddresing mode");
+    }
+}
 
 } // namespace game_boy

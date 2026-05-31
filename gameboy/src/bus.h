@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cart.h"
+#include "io.h"
 #include "ram.h"
 
 #include <cstdint>

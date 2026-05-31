@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "instructions.h"
+#include "timer.h"
 
 #include <format>
 #include <iostream>
@@ -75,8 +76,18 @@ void Cpu::cpu_set_flags(char z, char n, char h, char c)
 
 void Cpu::init()
 {
-    context_.regs.pc = 0x100;
-    context_.regs.a  = 0x01;
+    context_.regs.pc            = 0x100;
+    context_.regs.sp            = 0xFFFE;
+    *((short*)&context_.regs.a) = 0xB001;
+    *((short*)&context_.regs.b) = 0x1300;
+    *((short*)&context_.regs.d) = 0xD800;
+    *((short*)&context_.regs.h) = 0x4D01;
+    context_.ie_register        = 0;
+    context_.int_flags          = 0;
+    context_.int_master_enabled = false;
+    context_.enabling_ime       = false;
+
+    Timer::get_instance().context()->div = 0xABCC;
 
     instruction_processors_[IN_NOP] = []() {};
 
@@ -580,7 +591,11 @@ void Cpu::init()
 
 bool Cpu::is_16_bit(RegisterType rt) { return rt >= RegisterType::RT_AF; }
 
-void Cpu::set_bus(Bus* bus) { bus_ = bus; }
+void Cpu::set_bus(Bus* bus)
+{
+    bus_ = bus;
+    debug_.insert_bus(bus_);
+}
 
 void Cpu::fetch_instruction()
 {
@@ -927,12 +942,25 @@ bool Cpu::step()
                 context_.regs.f & (1 << 6) ? 'N' : '-', context_.regs.f & (1 << 5) ? 'H' : '-',
                 context_.regs.f & (1 << 4) ? 'C' : '-');
 
+        std::string buff;
+        buff.resize(15);
+        inst_to_str(&context_, bus_, buff);
+
         std::cout << std::format(
             "{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} F: {} BC: {:02X}{:02X} "
             "DE: {:02X}{:02X} HL: {:02X}{:02X}\n",
-            pc, get_instruction_name(context_.curr_instr->type), context_.curr_opcode,
-            bus_->read(pc + 1), bus_->read(pc + 2), context_.regs.a, flags.data(), context_.regs.b,
-            context_.regs.c, context_.regs.d, context_.regs.e, context_.regs.h, context_.regs.l);
+            pc, buff, context_.curr_opcode, bus_->read(pc + 1), bus_->read(pc + 2), context_.regs.a,
+            flags.data(), context_.regs.b, context_.regs.c, context_.regs.d, context_.regs.e,
+            context_.regs.h, context_.regs.l);
+
+        if (context_.curr_instr == std::nullopt)
+        {
+            std::cout << std::format("Unknown instruction {:02X}\n", context_.curr_opcode);
+            throw std::runtime_error("Invalid instruction");
+        }
+
+        debug_.update();
+        debug_.print();
 
         execute();
     }
@@ -1031,6 +1059,8 @@ bool Cpu::int_check(std::uint16_t addr, InterruptType it)
 
     return false;
 }
+
+void Cpu::request_interrupt(InterruptType i) { context_.int_flags |= i; }
 
 void Cpu::handle_interrupts()
 {
