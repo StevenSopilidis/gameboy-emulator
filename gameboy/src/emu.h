@@ -15,17 +15,17 @@ namespace game_boy
 
 struct EmuContext
 {
-    bool          paused;
-    bool          running;
-    bool          die;
-    std::uint64_t ticks;
+    bool          paused{false};
+    bool          running{false};
+    bool          die{false};
+    std::uint64_t ticks{0};
 };
 
 class Emu
 {
   public:
     Emu()                      = default;
-    Emu(const Emu&)            = default;
+    Emu(const Emu&)            = delete;
     Emu(Emu&&)                 = delete;
     Emu& operator=(const Emu&) = delete;
     Emu& operator=(Emu&&)      = delete;

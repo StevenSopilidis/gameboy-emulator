@@ -120,7 +120,7 @@ std::string_view Cart::license_name() const noexcept
 {
     if (context_->header->new_lic_code <= 0xA4)
     {
-        return LIC_CODE[context_->header->new_lic_code];
+        return LIC_CODE[context_->header->lic_code];
     }
 
     return "UNKNOWN";
@@ -153,7 +153,7 @@ bool Cart::load(std::string_view cart)
 
     file.seekg(0, std::ios::beg); // back to start
 
-    context_->rom_data.reserve(context_->rom_size);
+    context_->rom_data.resize(context_->rom_size);
 
     if (!file.read(reinterpret_cast<char*>(context_->rom_data.data()), size))
     {

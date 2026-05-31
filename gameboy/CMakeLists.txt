@@ -11,6 +11,7 @@ set(PROJECT_SOURCE_FILES
     src/ram.cpp
     src/ui.cpp
     src/io.cpp
+    src/timer.cpp
     src/debug.cpp
 )
 

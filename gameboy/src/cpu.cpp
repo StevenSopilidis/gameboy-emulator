@@ -51,7 +51,7 @@ RegisterType Cpu::decode_reg(std::uint8_t reg)
     return rt_lookups[reg];
 }
 
-void Cpu::cpu_set_flags(char z, char n, char h, char c)
+void Cpu::cpu_set_flags(int z, int n, int h, int c)
 {
     if (z != -1)
     {
@@ -76,16 +76,16 @@ void Cpu::cpu_set_flags(char z, char n, char h, char c)
 
 void Cpu::init()
 {
-    context_.regs.pc            = 0x100;
-    context_.regs.sp            = 0xFFFE;
-    *((short*)&context_.regs.a) = 0xB001;
-    *((short*)&context_.regs.b) = 0x1300;
-    *((short*)&context_.regs.d) = 0xD800;
-    *((short*)&context_.regs.h) = 0x4D01;
-    context_.ie_register        = 0;
-    context_.int_flags          = 0;
-    context_.int_master_enabled = false;
-    context_.enabling_ime       = false;
+    context_.regs.pc               = 0x100;
+    context_.regs.sp               = 0xFFFE;
+    *((uint16_t*)&context_.regs.a) = 0xB001;
+    *((uint16_t*)&context_.regs.b) = 0x1300;
+    *((uint16_t*)&context_.regs.d) = 0xD800;
+    *((uint16_t*)&context_.regs.h) = 0x4D01;
+    context_.ie_register           = 0;
+    context_.int_flags             = 0;
+    context_.int_master_enabled    = false;
+    context_.enabling_ime          = false;
 
     Timer::get_instance().context()->div = 0xABCC;
 
@@ -123,8 +123,8 @@ void Cpu::init()
                                  0x100;
 
             cpu_set_flags(0, 0, hflag, cflag);
-            set_register(context_.curr_instr->reg1,
-                         read_register(context_.curr_instr->reg2) + (char)context_.curr_fetch_data);
+            set_register(context_.curr_instr->reg1, read_register(context_.curr_instr->reg2) +
+                                                        (std::int8_t)context_.curr_fetch_data);
 
             return;
         }
@@ -162,7 +162,7 @@ void Cpu::init()
 
     instruction_processors_[IN_JR] = [&]()
     {
-        auto          rel  = (char)(context_.curr_fetch_data & 0xFF);
+        auto          rel  = (std::int8_t)(context_.curr_fetch_data & 0xFF);
         std::uint16_t addr = context_.regs.pc + rel;
         goto_addr(addr, false);
     };
@@ -185,7 +185,7 @@ void Cpu::init()
         }
         else
         {
-            bus_->write(0xFF00 | context_.curr_fetch_data, context_.regs.a);
+            bus_->write(context_.mem_dest, context_.regs.a);
         }
 
         inc_cycles(1);
@@ -205,12 +205,13 @@ void Cpu::init()
     instruction_processors_[IN_POP] = [&]()
     {
         auto data = stack_pop16();
-        set_register(context_.curr_instr->reg1, data);
 
         if (context_.curr_instr->reg1 == RT_AF)
         {
-            set_register(context_.curr_instr->reg1, data & 0xFFF0);
+            data &= 0xFFF0;
         }
+
+        set_register(context_.curr_instr->reg1, data);
     };
 
     instruction_processors_[IN_INC] = [&]()
@@ -282,7 +283,7 @@ void Cpu::init()
 
         if (context_.curr_instr->reg1 == RT_SP)
         {
-            val = read_register(context_.curr_instr->reg1) + (char)context_.curr_fetch_data;
+            val = read_register(context_.curr_instr->reg1) + (std::int8_t)context_.curr_fetch_data;
         }
 
         int z = (val & 0xFF) == 0;
@@ -347,18 +348,17 @@ void Cpu::init()
 
     instruction_processors_[IN_SBC] = [&]()
     {
-        std::uint8_t val = context_.curr_fetch_data + get_carry_flag();
+        auto cf = static_cast<int>(get_carry_flag());
+        auto u  = static_cast<int>(context_.curr_fetch_data) + cf;
 
-        int z = read_register(context_.curr_instr->reg1) - val == 0;
-        int h = ((int)read_register(context_.curr_instr->reg1) & 0xF) -
-                    ((int)context_.curr_fetch_data & 0xF) - ((int)get_carry_flag()) <
-                0;
+        int reg_val = static_cast<int>(read_register(context_.curr_instr->reg1));
+        int fetched = static_cast<int>(context_.curr_fetch_data);
 
-        int c = ((int)read_register(context_.curr_instr->reg1)) - ((int)context_.curr_fetch_data) -
-                    ((int)get_carry_flag()) <
-                0;
+        int z = ((reg_val - u) & 0xFF) == 0;
+        int h = (reg_val & 0xF) - (fetched & 0xF) - cf < 0;
+        int c = reg_val - fetched - cf < 0;
 
-        set_register(context_.curr_instr->reg1, read_register(context_.curr_instr->reg1) - val);
+        set_register(context_.curr_instr->reg1, static_cast<std::uint16_t>(reg_val - u));
         cpu_set_flags(z, 1, h, c);
     };
 
@@ -391,7 +391,7 @@ void Cpu::init()
     instruction_processors_[IN_RLCA] = [&]()
     {
         auto u          = context_.regs.a;
-        auto c          = static_cast<uint8_t>((u >> 8) & 1);
+        auto c          = static_cast<uint8_t>((u >> 7) & 1);
         u               = (u << 1) | c;
         context_.regs.a = u;
 
@@ -608,7 +608,15 @@ void Cpu::fetch_instruction()
     }
 }
 
-void Cpu::inc_cycles(int cpu_cycles) noexcept {}
+void Cpu::inc_cycles(int cpu_cycles) noexcept
+{
+    const auto n = cpu_cycles * 4;
+    for (std::size_t i{0}; i < n; i++)
+    {
+        cycles_++;
+        Timer::get_instance().tick();
+    }
+}
 
 int Cpu::get_cycles() const noexcept { return cycles_; }
 
@@ -935,6 +943,7 @@ bool Cpu::step()
     {
         auto pc = context_.regs.pc;
         fetch_instruction();
+        inc_cycles(1);
         fetch_data();
 
         std::array<char, 16> flags;
@@ -943,8 +952,9 @@ bool Cpu::step()
                 context_.regs.f & (1 << 4) ? 'C' : '-');
 
         std::string buff;
-        buff.resize(15);
+        buff.resize(64);
         inst_to_str(&context_, bus_, buff);
+        buff.resize(std::char_traits<char>::length(buff.data()));
 
         std::cout << std::format(
             "{:04X}: {} ({:02X} {:02X} {:02X}), A: {:02X} F: {} BC: {:02X}{:02X} "
@@ -1050,7 +1060,9 @@ bool Cpu::int_check(std::uint16_t addr, InterruptType it)
 {
     if (context_.int_flags & it && context_.ie_register & it)
     {
+        inc_cycles(2);
         handle_interrupt(addr);
+        inc_cycles(1);
         context_.int_flags &= ~it;
         context_.halted             = false;
         context_.int_master_enabled = false;

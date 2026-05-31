@@ -45,7 +45,7 @@ std::uint8_t Bus::read(std::uint16_t addr)
     if (addr < 0xC000)
     {
         // Cartridge ram
-        cart_->read(addr);
+        return cart_->read(addr);
     }
 
     if (addr < 0xE000)
@@ -148,6 +148,7 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
         // IO Registers
         // throw std::runtime_error("BUS WRITE NOT IMPLEMENTED");
         IO::get_instance().write(addr, val);
+        return;
     }
 
     if (addr == 0XFFFF)

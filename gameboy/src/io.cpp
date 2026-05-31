@@ -1,5 +1,6 @@
 #include "io.h"
 
+#include "cpu.h"
 #include "timer.h"
 
 #include <iostream>
@@ -25,12 +26,14 @@ std::uint8_t IO::read(std::uint16_t addr)
 
     if (addr == 0xFF0F)
     {
-        return get_int_flags();
+        return cpu_->int_flags();
     }
 
     std::cout << "BUS READ NOT IMPLEMENTED\n";
     return 0;
 }
+
+void IO::connect_to_cpu(Cpu* cpu) { cpu_ = cpu; }
 
 IO& IO::get_instance()
 {
@@ -60,7 +63,7 @@ void IO::write(std::uint16_t addr, std::uint8_t val)
 
     if (addr == 0xFF0F)
     {
-        return cpu_set_int_flags(flags);
+        cpu_->set_int_flags(val);
         return;
     }
 

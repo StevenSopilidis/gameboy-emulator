@@ -1,5 +1,6 @@
 #include "emu.h"
 
+#include "io.h"
 #include "timer.h"
 
 #include <format>
@@ -14,6 +15,7 @@ void Emu::run_cpu()
 {
     cpu_.init();
     Timer::get_instance().connect_cpu(&cpu_);
+    IO::get_instance().connect_to_cpu(&cpu_);
     cpu_.set_bus(&bus_);
     bus_.insert_cpu(&cpu_);
 

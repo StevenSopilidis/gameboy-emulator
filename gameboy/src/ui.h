@@ -43,6 +43,17 @@ struct SDLTextureDeleter
     }
 };
 
+struct SDLSurfaceDeleter
+{
+    void operator()(SDL_Surface* s) const
+    {
+        if (s)
+        {
+            SDL_FreeSurface(s);
+        }
+    }
+};
+
 class UI
 {
   public:
@@ -60,7 +71,7 @@ class UI
     std::unique_ptr<SDL_Window, SDLWindowDeleter>     sdl_window_;
     std::unique_ptr<SDL_Renderer, SDLRendererDeleter> sdl_renderer_;
     std::unique_ptr<SDL_Texture, SDLTextureDeleter>   sdl_texture_;
-    std::unique_ptr<SDL_Surface>                      sdl_surface_;
+    std::unique_ptr<SDL_Surface, SDLSurfaceDeleter>   sdl_surface_;
 
     EmuContext* emu_context_;
 };

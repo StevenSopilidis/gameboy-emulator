@@ -17,20 +17,20 @@ void Timer::tick()
     switch (context_.tac & (0b11))
     {
     case 0b00:
-        timer_update = (prev_div & (1 << 9)) && ((!context_.div && (1 << 9)));
+        timer_update = (prev_div & (1 << 9) && !(context_.div & (1 << 9)));
         break;
     case 0b01:
-        timer_update = (prev_div & (1 << 3)) && ((!context_.div && (1 << 3)));
+        timer_update = (prev_div & (1 << 3) && !(context_.div & (1 << 3)));
         break;
     case 0b10:
-        timer_update = (prev_div & (1 << 5)) && ((!context_.div && (1 << 5)));
+        timer_update = (prev_div & (1 << 5) && !(context_.div & (1 << 5)));
         break;
     case 0b11:
-        timer_update = (prev_div & (1 << 7)) && ((!context_.div && (1 << 7)));
+        timer_update = (prev_div & (1 << 7) && !(context_.div & (1 << 7)));
         break;
     }
 
-    if (timer_update && context_.tac && (1 << 2))
+    if (timer_update && (context_.tac & (1 << 2)))
     {
         context_.tima++;
 
@@ -92,6 +92,8 @@ std::uint8_t Timer::read(std::uint16_t addr)
         // TAC
         return context_.tac;
     }
+
+    return 0;
 }
 
 [[nodiscard]] TimerContext* Timer::context() { return &context_; }

@@ -13,35 +13,35 @@ namespace game_boy
 
 struct Registers
 {
-    std::uint8_t  a;
-    std::uint8_t  f;
-    std::uint8_t  b;
-    std::uint8_t  c;
-    std::uint8_t  d;
-    std::uint8_t  e;
-    std::uint8_t  h;
-    std::uint8_t  l;
-    std::uint16_t pc;
-    std::uint16_t sp;
+    std::uint8_t  a{0};
+    std::uint8_t  f{0};
+    std::uint8_t  b{0};
+    std::uint8_t  c{0};
+    std::uint8_t  d{0};
+    std::uint8_t  e{0};
+    std::uint8_t  h{0};
+    std::uint8_t  l{0};
+    std::uint16_t pc{0};
+    std::uint16_t sp{0};
 };
 
 struct CpuContext
 {
-    Registers     regs;
-    std::uint16_t curr_fetch_data;
-    std::uint16_t mem_dest;
-    std::uint8_t  curr_opcode;
-    bool          dest_is_mem;
+    Registers     regs{};
+    std::uint16_t curr_fetch_data{0};
+    std::uint16_t mem_dest{0};
+    std::uint8_t  curr_opcode{0};
+    bool          dest_is_mem{false};
 
     std::optional<Instruction> curr_instr;
 
-    bool halted;
-    bool stepping;
+    bool halted{false};
+    bool stepping{false};
 
-    bool         int_master_enabled;
-    bool         enabling_ime;
-    std::uint8_t ie_register;
-    std::uint8_t int_flags;
+    bool         int_master_enabled{false};
+    bool         enabling_ime{false};
+    std::uint8_t ie_register{0};
+    std::uint8_t int_flags{0};
 };
 
 enum InterruptType : uint8_t
@@ -77,20 +77,20 @@ class Cpu
 
     void request_interrupt(InterruptType i);
 
+    std::uint8_t int_flags();
+    void         set_int_flags(std::uint8_t val);
+
   private:
     using IN_PROC = std::function<void()>;
 
     void          fetch_instruction();
     void          fetch_data();
-    void          cpu_set_flags(char z, char n, char h, char c);
+    void          cpu_set_flags(int z, int n, int h, int c);
     void          execute();
     std::uint16_t read_register(RegisterType reg);
     void          set_register(RegisterType reg, std::uint16_t val);
     std::uint8_t  read_register8(RegisterType reg);
     void          set_register8(RegisterType reg, std::uint8_t val);
-
-    std::uint8_t int_flags();
-    void         set_int_flags(std::uint8_t val);
 
     static bool         is_16_bit(RegisterType rt);
     static RegisterType decode_reg(std::uint8_t reg);
