@@ -59,8 +59,6 @@ class Cpu
     void init();
     bool step();
 
-    void set_bus(Bus* bus);
-
     void              inc_cycles(int cpu_cycles) noexcept;
     [[nodiscard]] int get_cycles() const noexcept;
 

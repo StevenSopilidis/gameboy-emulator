@@ -2,6 +2,7 @@
 
 #include "cpu.h"
 #include "io.h"
+#include "ppu.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -29,6 +30,8 @@ void Bus::insert_ram(Ram* ram) { ram_ = ram; }
 
 void Bus::insert_cpu(Cpu* cpu) { cpu_ = cpu; }
 
+void Bus::insert_ppu(Ppu* ppu) { ppu_ = ppu; }
+
 std::uint8_t Bus::read(std::uint16_t addr)
 {
     if (addr < 0x8000)
@@ -39,7 +42,7 @@ std::uint8_t Bus::read(std::uint16_t addr)
 
     if (addr < 0xA000)
     {
-        throw std::runtime_error("BUS READ NOT IMPLEMENTED");
+        return ppu_->vram_read(addr);
     }
 
     if (addr < 0xC000)
@@ -63,8 +66,7 @@ std::uint8_t Bus::read(std::uint16_t addr)
     if (addr < 0xFEA0)
     {
         // OAM
-        std::cout << "BUS READ NOT IMPLEMENTED\n";
-        return 0;
+        return ppu_->oam_read(addr);
     }
 
     if (addr < 0xFF00)
@@ -106,7 +108,7 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
 
     if (addr < 0xA000)
     {
-        std::cout << "BUS WRITE NOT IMPLEMENTED\n";
+        ppu_->vram_write(addr, val);
         return;
     }
 
@@ -133,7 +135,7 @@ void Bus::write(std::uint16_t addr, std::uint8_t val)
     if (addr < 0xFEA0)
     {
         // OAM
-        std::cout << "BUS WRITE NOT IMPLEMENTED\n";
+        ppu_->oam_write(addr, val);
         return;
     }
 
@@ -165,6 +167,13 @@ void Bus::write16(std::uint16_t addr, std::uint16_t val)
 {
     write(addr + 1, (val >> 8) & 0xFF);
     write(addr, val & 0xFF);
+}
+
+Bus* Bus::get_instance()
+{
+    static Bus bus;
+
+    return &bus;
 }
 
 } // namespace game_boy

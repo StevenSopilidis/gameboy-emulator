@@ -87,6 +87,8 @@ void Cpu::init()
     context_.int_master_enabled    = false;
     context_.enabling_ime          = false;
 
+    bus_ = Bus::get_instance();
+
     Timer::get_instance().context()->div = 0xABCC;
 
     instruction_processors_[IN_NOP] = []() {};
@@ -590,12 +592,6 @@ void Cpu::init()
 }
 
 bool Cpu::is_16_bit(RegisterType rt) { return rt >= RegisterType::RT_AF; }
-
-void Cpu::set_bus(Bus* bus)
-{
-    bus_ = bus;
-    debug_.insert_bus(bus_);
-}
 
 void Cpu::fetch_instruction()
 {

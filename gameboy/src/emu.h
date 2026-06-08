@@ -3,6 +3,7 @@
 #include "bus.h"
 #include "cart.h"
 #include "cpu.h"
+#include "ppu.h"
 #include "ram.h"
 #include "timer.h"
 #include "ui.h"
@@ -24,7 +25,7 @@ struct EmuContext
 class Emu
 {
   public:
-    Emu()                      = default;
+    Emu();
     Emu(const Emu&)            = delete;
     Emu(Emu&&)                 = delete;
     Emu& operator=(const Emu&) = delete;
@@ -41,8 +42,9 @@ class Emu
     Cart       cart_;
     UI         ui_;
     Ram        ram_;
+    Ppu        ppu_;
     Cpu        cpu_;
-    Bus        bus_;
+    Bus*       bus_;
 
     std::thread cpu_thread_;
 };

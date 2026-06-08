@@ -11,14 +11,15 @@ namespace game_boy
 {
 const EmuContext& Emu::get_context() const noexcept { return context_; }
 
+Emu::Emu() : bus_{Bus::get_instance()} {}
+
 void Emu::run_cpu()
 {
     cpu_.init();
     Timer::get_instance().connect_cpu(&cpu_);
     IO::get_instance().connect_to_cpu(&cpu_);
-    cpu_.set_bus(&bus_);
-    bus_.insert_cpu(&cpu_);
-
+    bus_->insert_cpu(&cpu_);
+    bus_->insert_ppu(&ppu_);
     context_.running = true;
     context_.paused  = false;
     context_.ticks   = 0;
@@ -51,8 +52,8 @@ void Emu::run(int argc, char** argv)
         throw std::runtime_error(std::format("Failed to load cart: {}", argv[1]));
     }
 
-    bus_.insert_cart(&cart_);
-    bus_.insert_ram(&ram_);
+    bus_->insert_cart(&cart_);
+    bus_->insert_ram(&ram_);
 
     std::cout << "Card loaded\n";
 
@@ -64,6 +65,8 @@ void Emu::run(int argc, char** argv)
     {
         std::this_thread::sleep_for(std::chrono::microseconds(1000));
         ui_.handle_events();
+
+        ui_.update();
     }
 }
 
